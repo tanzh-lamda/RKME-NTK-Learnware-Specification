@@ -1,6 +1,6 @@
 from functools import reduce
 
-import get_data
+import data_downloader
 import torch
 import numpy as np
 import random

@@ -7,12 +7,14 @@ from typing import Any, Union
 import faiss
 import numpy as np
 import torch
-from learnware.specification import BaseStatSpecification
 from learnware.specification.rkme import choose_device, setup_seed, solve_qp, RKMEStatSpecification
 
+from utils.random_feature_model import build_model
+
+MODEL_TYPE = ""
 
 class NTKStatSpecification(RKMEStatSpecification):
-    def __init__(self, sigma: float = 0.1, cuda_idx: int = -1):
+    def __init__(self, sigma: float = 0.1, n_models=8, cuda_idx: int = -1, **kwargs):
         """Initializing RKME parameters.
 
         Parameters
@@ -24,6 +26,9 @@ class NTKStatSpecification(RKMEStatSpecification):
         """
         super().__init__(cuda_idx=cuda_idx)
         self.sigma = sigma
+        self.n_models = n_models
+        self.random_models = None
+        self.kwargs = kwargs
 
     def generate_stat_spec_from_data(
             self,
@@ -57,6 +62,15 @@ class NTKStatSpecification(RKMEStatSpecification):
         Z_shape = tuple([K] + list(X_shape)[1:])
         X = X.reshape(self.num_points, -1)
 
+        if self.random_models is None:
+            model_args = {'input_dim': -1, 'n_channels': -1,
+                          'n_random_features': self.kwargs["n_features"],
+                          'net_depth': 3, 'random__act': self.kwargs["activation"],
+                          'mu': 0, 'sigma': self.sigma}
+
+            model_class = build_model("resnet", **model_args)
+            self.random_models = self._generate_models(model_class)
+
         # Check data values
         X[np.isinf(X) | np.isneginf(X) | np.isposinf(X) | np.isneginf(X)] = np.nan
         if np.any(np.isnan(X)):
@@ -88,6 +102,16 @@ class NTKStatSpecification(RKMEStatSpecification):
         # Reshape to original dimensions
         self.z = self.z.reshape(Z_shape)
 
+    def _generate_models(self, model_class, fixed_seed=None):
+        models = []
+        for m in range(self.n_models):
+            if fixed_seed is not None:
+                torch.manual_seed(fixed_seed[m])
+            model = model_class()
+            models.append(model)
+
+        return models
+
     def _update_beta(self, X: Any, nonnegative_beta: bool = True):
         """Fix Z and update beta using its closed-form solution.
 
@@ -106,9 +130,12 @@ class NTKStatSpecification(RKMEStatSpecification):
         if not torch.is_tensor(X):
             X = torch.from_numpy(X)
         X = X.to(self.device).double()
-        # TODO: 修改成
-        K = torch_rbf_kernel(Z, Z, gamma=self.gamma).to(self.device)
-        C = torch_rbf_kernel(Z, X, gamma=self.gamma).to(self.device)
+
+        z_random_features = self._generate_random_feature(Z)
+        x_random_features = self._generate_random_feature(X)
+
+        K = self._calc_ntk_from_feature(z_random_features, z_random_features).to(self.device)
+        C = self._calc_ntk_from_feature(z_random_features, x_random_features).to(self.device)
         C = torch.sum(C, dim=1) / X.shape[0]
 
         if nonnegative_beta:
@@ -147,19 +174,9 @@ class NTKStatSpecification(RKMEStatSpecification):
         X = X.to(self.device).double()
 
         grad_Z = torch.zeros_like(Z)
-
+        # TODO
 
         self.z = Z
-
-    def _generate_models(self, model_class, n_models, n_features_per_model, fixed_seed=None):
-        models = []
-        for m in range(n_models):
-            if fixed_seed is not None:
-                torch.manual_seed(fixed_seed[m])
-            model = model_class()
-            models.append(model)
-
-        return models
 
     def _generate_random_feature(self, X, batch_size=300):
         X_features_list = []
@@ -168,7 +185,7 @@ class NTKStatSpecification(RKMEStatSpecification):
         X = X.to(self.device)
 
         for m in range(self.n_models):
-            model = self.model_list[m]
+            model = self.random_models[m]
             model.to(self.device)
             model.eval()
             curr_features_list = []
@@ -183,21 +200,14 @@ class NTKStatSpecification(RKMEStatSpecification):
         return X_features
 
     def _calc_ntk_from_raw(self, x1, x2, batch_size=128):
+        x1_feature = self._generate_random_feature(x1, batch_size=batch_size)
+        x2_feature = self._generate_random_feature(x2, batch_size=batch_size)
 
-        x1_feature = self.generate_random_feature(x1, batch_size=batch_size)
-        x2_feature = self.generate_random_feature(x2, batch_size=batch_size)
-
-        # x1_feature = x1_feature/math.sqrt(self.n_models*self.n_features_per_model)
-        # x2_feature = x2_feature/math.sqrt(self.n_models*self.n_features_per_model)
-        K_12 = x1_feature @ x2_feature.T + 0.01
-        return K_12
+        return self._calc_ntk_from_feature(x1_feature, x2_feature)
 
     def _calc_ntk_from_feature(self, x1_feature, x2_feature):
-        # print(type(x1_feature), type(x2_feature))
-        # print(x1_feature.size(), x2_feature.size())
         K_12 = x1_feature @ x2_feature.T + 0.01
         return K_12
-
 
     def _inner_prod_with_X(self, X: Any) -> float:
         """Compute the inner product between RKME specification and X
@@ -218,24 +228,9 @@ class NTKStatSpecification(RKMEStatSpecification):
             X = torch.from_numpy(X)
         X = X.to(self.device).double()
 
-
-
-
-        return v.detach().cpu().numpy()
+        return self._calc_ntk_from_raw(Z, X)
 
     def _sampling_candidates(self, N: int) -> np.ndarray:
-        """Generate a large set of candidates as preparation for herding
-
-        Parameters
-        ----------
-        N : int
-            The number of herding candidates.
-
-        Returns
-        -------
-        np.ndarray
-            The herding candidates.
-        """
         raise NotImplementedError()
 
     def inner_prod(self, Phi2: RKMEStatSpecification) -> float:
@@ -255,21 +250,9 @@ class NTKStatSpecification(RKMEStatSpecification):
         beta_2 = Phi2.beta.reshape(1, -1).double().to(self.device)
         Z1 = self.z.double().reshape(self.z.shape[0], -1).to(self.device)
         Z2 = Phi2.z.double().reshape(Phi2.z.shape[0], -1).to(self.device)
-        v = torch.sum(torch_rbf_kernel(Z1, Z2, self.gamma) * (beta_1.T @ beta_2))
+        v = torch.sum(self._calc_ntk_from_raw(Z1, Z2) * (beta_1.T @ beta_2))
 
         return float(v)
 
     def herding(self, T: int) -> np.ndarray:
-        """Iteratively sample examples from an unknown distribution with the help of its RKME specification
-
-        Parameters
-        ----------
-        T : int
-            Total iteration number for sampling.
-
-        Returns
-        -------
-        np.ndarray
-            A collection of examples which approximate the unknown distribution.
-        """
         raise NotImplementedError()

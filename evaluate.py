@@ -51,6 +51,6 @@ def evaluate_market_performance(args, easy_market):
 
         curr_acc = np.mean(ensemble_predict_y == test_y)
         acc.append(curr_acc)
-        print("Accuracy for user {:d}:".format(i), curr_acc)
+        print("Accuracy for user {:d} with {} kernel:".format(args.spec, i), curr_acc)
 
     print("Accuracy:", np.mean(acc), np.std(acc))
