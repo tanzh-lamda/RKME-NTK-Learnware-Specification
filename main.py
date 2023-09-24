@@ -4,6 +4,7 @@ import logging
 import fire
 import torch
 
+from benchmark import best_match_performance
 from build_market import build_from_preprocessed, upload_to_easy_market
 from evaluate import evaluate_market_performance
 from preprocess.split_data import generate
@@ -15,8 +16,10 @@ parser.add_argument('--cuda_idx', type=int, required=False, default=0,
                     help='ID of device')
 parser.add_argument('--resplit', type=bool, required=False, default=False,
                     help='Resplit datasets')
-parser.add_argument('--retrian', type=bool, required=False, default=False,
+parser.add_argument('--retrain', type=bool, required=False, default=False,
                     help='Retrain models')
+parser.add_argument('--regenerate', type=bool, required=False, default=False,
+                    help='regenerate learnwares')
 
 # learnware
 parser.add_argument('--spec', type=str, required=False, default='rbf',
@@ -50,6 +53,8 @@ if __name__ == "__main__":
         generate('cifar10')
     if args.resplit or args.retrain:
         train_model()
-    learnware_list = build_from_preprocessed(args, regenerate=True)
-    market = upload_to_easy_market(args, learnware_list)
-    evaluate_market_performance(args, market)
+
+    best_match_performance(args)
+    # learnware_list = build_from_preprocessed(args, regenerate=args.regenerate)
+    # market = upload_to_easy_market(args, learnware_list)
+    # evaluate_market_performance(args, market)

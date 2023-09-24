@@ -111,7 +111,7 @@ def train_model():
     test_dataloader = ImageDataLoader(data_root, n_users, train=False)
     acc_matrix = []
     for i, (test_X, test_y) in enumerate(test_dataloader):
-        print('Evaluate on user: %d'%(i))
+        print('Evaluate on user: %d' % i)
         acc_list = models_test(test_X, test_y, model_list)
         print('Results: Max accuracy: %.2f, Min accuracy: %.2f, Average accuracy: %.2f'%(np.max(acc_list),
                                                                                         np.min(acc_list),
@@ -119,6 +119,8 @@ def train_model():
         acc_matrix.append(acc_list)
 
     np_acc_matrix = np.asarray(acc_matrix)
+    # TODO: Check This
+    print("Accuracy Totally {:.2f} ({:.2f})".format(np.mean(np_acc_matrix), np.std(np_acc_matrix)))
     eval_results = os.path.join(model_save_root, 'eval_results.txt')
     np.savetxt(eval_results, np_acc_matrix)
     print("Eval Results Saved to '{}'".format(eval_results))
