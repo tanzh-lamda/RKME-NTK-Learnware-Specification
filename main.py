@@ -54,7 +54,7 @@ if __name__ == "__main__":
     if args.resplit or args.retrain:
         train_model()
 
-    best_match_performance(args)
-    # learnware_list = build_from_preprocessed(args, regenerate=args.regenerate)
-    # market = upload_to_easy_market(args, learnware_list)
-    # evaluate_market_performance(args, market)
+    # best_match_performance(args)
+    learnware_list = build_from_preprocessed(args, regenerate=args.regenerate)
+    market = upload_to_easy_market(args, learnware_list)
+    evaluate_market_performance(args, market)

@@ -16,9 +16,11 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from utils.random_feature_model import build_model
 
-
-
 class RKMEStatSpecification(BaseStatSpecification):
+    # Lazy Mode
+    # 好像要单例模式了, 只能有一个网络实例,不然算的似乎不行
+    ntk_calculator = None
+
     def __init__(self, sigma: float = 0.1,
                  n_models=8, cuda_idx: int = -1,
                  **kwargs):
@@ -108,8 +110,11 @@ class RKMEStatSpecification(BaseStatSpecification):
         center = torch.from_numpy(kmeans.centroids)
         self.z = center
 
-    @staticmethod
-    def _generate_models(kwargs, sigma, n_models, device, fixed_seed=None):
+    @classmethod
+    def _generate_models(cls, kwargs, sigma, n_models, device, fixed_seed=None):
+        if cls.ntk_calculator is not None:
+            return cls.ntk_calculator
+
         # 由于一些历史原因，这个input_dim其实对应了数据的channel
         # 而这里的channel，指的其实是模型的宽度
         model_args = {'input_dim': 3, 'n_channels': kwargs["model_channel"],
@@ -124,6 +129,8 @@ class RKMEStatSpecification(BaseStatSpecification):
                 torch.manual_seed(fixed_seed[m])
             model = model_class()
             models.append(model.to(device))
+
+        cls.ntk_calculator = models
 
         return models
 
