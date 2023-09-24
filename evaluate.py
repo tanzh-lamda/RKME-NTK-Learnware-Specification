@@ -9,6 +9,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from build_market import user_semantic
 from preprocess.dataloader import ImageDataLoader
+from utils.ntk_rkme import RKMEStatSpecification
 from utils.reuse import AveragingReuser
 
 
@@ -42,7 +43,16 @@ def evaluate_market_performance(args, easy_market):
     dataloader = ImageDataLoader(data_root, args.n_users, train=False)
     acc = []
     for i, (test_X, test_y) in enumerate(dataloader):
-        stat_spec = specification.utils.generate_rkme_spec(X=test_X, gamma=0.1, cuda_idx=0)
+        if args.spec == "gaussian":
+            stat_spec = specification.utils.generate_rkme_spec(X=test_X, gamma=0.1, cuda_idx=0)
+        elif args.spec == "ntk":
+            stat_spec = RKMEStatSpecification(model_channel=args.model_channel,
+                                        n_features=args.n_features,
+                                        activation=args.activation)
+            stat_spec.generate_stat_spec_from_data(test_X)
+        else:
+            raise NotImplementedError()
+
         user_info = BaseUserInfo(semantic_spec=user_semantic, stat_info={"RKMEStatSpecification": stat_spec})
 
         _, _, _, mixture_learnware_list = easy_market.search_learnware(user_info, max_search_num=1)
@@ -51,6 +61,6 @@ def evaluate_market_performance(args, easy_market):
 
         curr_acc = np.mean(ensemble_predict_y == test_y)
         acc.append(curr_acc)
-        print("Accuracy for user {:d} with {} kernel:".format(args.spec, i), curr_acc)
+        print("Accuracy for user {:d} with {} kernel:".format(i, args.spec), curr_acc)
 
     print("Accuracy:", np.mean(acc), np.std(acc))

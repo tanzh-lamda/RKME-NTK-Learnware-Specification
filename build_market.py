@@ -5,10 +5,12 @@ from shutil import copyfile, rmtree
 
 import learnware
 import numpy as np
+import yaml
 from learnware import specification
 from learnware.market import EasyMarket
 
 from preprocess.dataloader import ImageDataLoader
+from utils.ntk_rkme import RKMEStatSpecification
 
 user_semantic = {
     "Data": {"Values": ["Image"], "Type": "Class"},
@@ -46,6 +48,12 @@ def build_from_preprocessed(args, regenerate=True):
         # Make Specification
         if args.spec == "gaussian":
             spec = specification.utils.generate_rkme_spec(X=train_X, gamma=0.1, cuda_idx=0)
+        elif args.spec == "ntk":
+            spec = RKMEStatSpecification(model_channel=args.model_channel,
+                                        n_features=args.n_features,
+                                        activation=args.activation,
+                                        cuda_idx=args.cuda_idx)
+            spec.generate_stat_spec_from_data(train_X)
         else:
             raise NotImplementedError("Not Support", args.spec)
         spec.save(os.path.join(dir_path, "spec.json"))
@@ -57,9 +65,18 @@ def build_from_preprocessed(args, regenerate=True):
             os.path.join(market_root, "learnware_example",
                          "cifar10_init.py"), init_file
         )  # cp cifar10_init.py init_file
-        copyfile(os.path.join(market_root, "learnware_example",
-                              "{}.yaml".format(args.spec)),
-                 yaml_file)  # cp gaussian.yaml yaml_file
+        with open(os.path.join(market_root, "learnware_example",
+                              "{}.yaml".format(args.spec)), "r") as yaml_templet,\
+            open(yaml_file, "w") as yaml_target:
+
+            yaml_content = yaml.load(yaml_templet, Loader=yaml.FullLoader)
+            yaml_content["stat_specifications"][0]["kwargs"] = args.__dict__
+
+            yaml.dump(yaml_content, yaml_target)
+
+        # copyfile(os.path.join(market_root, "learnware_example",
+        #                       "{}.yaml".format(args.spec)),
+        #          yaml_file)  # cp gaussian.yaml yaml_file
 
         zip_file = dir_path + ".zip"
         # zip -q -r -j zip_file dir_path

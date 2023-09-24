@@ -383,7 +383,7 @@ def build_model(model_type, **args):
         model = partial(Linear_wide, **args)
     elif model_type == 'conv':
         model = partial(ConvNet_wide, **args)
-    elif model_type == "c":
+    elif model_type == "resnet":
         model = partial(ResNet, **args)
     else:
         model = None
