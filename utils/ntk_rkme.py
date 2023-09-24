@@ -112,7 +112,6 @@ class RKMEStatSpecification(BaseStatSpecification):
     def _generate_models(kwargs, sigma, n_models, device, fixed_seed=None):
         # 由于一些历史原因，这个input_dim其实对应了数据的channel
         # 而这里的channel，指的其实是模型的宽度
-        # TODO: 通过编辑yaml文件，修改kwargs，连通main中args与model_args之间的关系，便于调参
         model_args = {'input_dim': 3, 'n_channels': kwargs["model_channel"],
                       'n_random_features': kwargs["n_features"],
                       'net_depth': 3, 'net_act': kwargs["activation"],
