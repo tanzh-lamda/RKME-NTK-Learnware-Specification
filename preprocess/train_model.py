@@ -87,7 +87,7 @@ def models_test(test_X, test_y, model_list):
         acc_list.append(acc)
     return acc_list
 
-def main():
+def train_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     n_uploaders = 50
     n_users = 50
@@ -167,4 +167,5 @@ def main():
     '''
 
 if __name__ == '__main__':
-    main()
+    # main()
+    pass

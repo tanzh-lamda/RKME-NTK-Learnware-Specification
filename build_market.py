@@ -46,7 +46,7 @@ def build_from_preprocessed(args, regenerate=True):
                  model_file)
 
         # Make Specification
-        if args.spec == "gaussian":
+        if args.spec == "rbf":
             spec = specification.utils.generate_rkme_spec(X=train_X, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
             spec = RKMEStatSpecification(model_channel=args.model_channel,
@@ -65,18 +65,20 @@ def build_from_preprocessed(args, regenerate=True):
             os.path.join(market_root, "learnware_example",
                          "cifar10_init.py"), init_file
         )  # cp cifar10_init.py init_file
-        with open(os.path.join(market_root, "learnware_example",
-                              "{}.yaml".format(args.spec)), "r") as yaml_templet,\
-            open(yaml_file, "w") as yaml_target:
 
-            yaml_content = yaml.load(yaml_templet, Loader=yaml.FullLoader)
-            yaml_content["stat_specifications"][0]["kwargs"] = args.__dict__
+        if args.spec == "ntk":
+            with open(os.path.join(market_root, "learnware_example",
+                                  "{}.yaml".format(args.spec)), "r") as yaml_templet,\
+                open(yaml_file, "w") as yaml_target:
 
-            yaml.dump(yaml_content, yaml_target)
+                yaml_content = yaml.load(yaml_templet, Loader=yaml.FullLoader)
+                yaml_content["stat_specifications"][0]["kwargs"] = args.__dict__
 
-        # copyfile(os.path.join(market_root, "learnware_example",
-        #                       "{}.yaml".format(args.spec)),
-        #          yaml_file)  # cp gaussian.yaml yaml_file
+                yaml.dump(yaml_content, yaml_target)
+        elif args.spec == "rbf":
+            copyfile(os.path.join(market_root, "learnware_example",
+                                  "{}.yaml".format(args.spec)),
+                     yaml_file)  # cp rbf.yaml yaml_file
 
         zip_file = dir_path + ".zip"
         # zip -q -r -j zip_file dir_path

@@ -43,7 +43,7 @@ def evaluate_market_performance(args, easy_market):
     dataloader = ImageDataLoader(data_root, args.n_users, train=False)
     acc = []
     for i, (test_X, test_y) in enumerate(dataloader):
-        if args.spec == "gaussian":
+        if args.spec == "rbf":
             stat_spec = specification.utils.generate_rkme_spec(X=test_X, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
             stat_spec = RKMEStatSpecification(model_channel=args.model_channel,
