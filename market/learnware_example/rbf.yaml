@@ -1,6 +1,6 @@
 model:
   class_name: Model
-  kwargs: {device: "cuda"}
+  kwargs: {device: "cuda:0"}
 stat_specifications:
   - module_path: learnware.specification
     class_name: RKMEStatSpecification

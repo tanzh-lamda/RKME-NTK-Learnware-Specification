@@ -14,18 +14,21 @@ parser = argparse.ArgumentParser(description='NTK-RF Experiments Remake')
 
 parser.add_argument('--cuda_idx', type=int, required=False, default=0,
                     help='ID of device')
-parser.add_argument('--resplit', type=bool, required=False, default=False,
+parser.add_argument('--resplit', default=False, action=argparse.BooleanOptionalAction,
                     help='Resplit datasets')
-parser.add_argument('--retrain', type=bool, required=False, default=False,
+parser.add_argument('--retrain', default=False, action=argparse.BooleanOptionalAction,
                     help='Retrain models')
-parser.add_argument('--regenerate', type=bool, required=False, default=False,
+parser.add_argument('--regenerate', default=False, action=argparse.BooleanOptionalAction,
                     help='regenerate learnwares')
+parser.add_argument('--no_reduce', default=False, action=argparse.BooleanOptionalAction, help='whether to reduce')
 
 # learnware
 parser.add_argument('--spec', type=str, required=False, default='rbf',
                     help='Specification, options: [rbf, NTK]')
 parser.add_argument('--market_root', type=str, required=False, default='market',
                     help='Path of Market')
+parser.add_argument('-K', type=int, required=False, default=100,
+                    help='number of reduced points')
 
 # data
 parser.add_argument('--data', type=str, required=False, default='cifar10', help='dataset type')
@@ -33,6 +36,7 @@ parser.add_argument('--data_root', type=str, required=False, default=r"image_mod
                     help='The path of images and models')
 parser.add_argument('--n_uploaders', type=int, required=False, default=50, help='Number of uploaders')
 parser.add_argument('--n_users', type=int, required=False, default=50, help='Number of users')
+
 
 #ntk
 parser.add_argument('--model_channel', type=int, required=False,

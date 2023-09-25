@@ -1,6 +1,6 @@
 model:
   class_name: Model
-  kwargs: {device: "cuda"}
+  kwargs: {device: "cuda:1"}
 stat_specifications:
   - module_path: utils.ntk_rkme
     class_name: RKMEStatSpecification

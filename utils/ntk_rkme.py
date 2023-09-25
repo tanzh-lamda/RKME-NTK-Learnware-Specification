@@ -43,7 +43,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         self,
         X: np.ndarray,
         K: int = 100,
-        step_size: float = 0.1,
+        step_size: float = 0.01,
         steps: int = 3,
         nonnegative_beta: bool = True,
         reduce: bool = True,
@@ -190,7 +190,7 @@ class RKMEStatSpecification(BaseStatSpecification):
             optimizer.step()
 
 
-    def _generate_random_feature(self, data_X, batch_size=300) -> torch.Tensor:
+    def _generate_random_feature(self, data_X, batch_size=1024) -> torch.Tensor:
         X_features_list = []
         if not torch.is_tensor(data_X):
             data_X = torch.from_numpy(data_X)
@@ -243,7 +243,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return float(term1 - 2 * term2 + term3)
 
-    def _calc_ntk_from_raw(self, x1, x2, batch_size=128):
+    def _calc_ntk_from_raw(self, x1, x2, batch_size=1024):
         x1_feature = self._generate_random_feature(x1, batch_size=batch_size)
         x2_feature = self._generate_random_feature(x2, batch_size=batch_size)
 

@@ -8,7 +8,7 @@ from preprocess.model import ConvModel
 
 
 class Model(BaseModel):
-    def __init__(self, device="cuda:0"):
+    def __init__(self, device="cuda"):
         super(Model, self).__init__(input_shape=(3, 32, 32), output_shape=(10,))
         dir_path = os.path.dirname(os.path.abspath(__file__))
         self.device =device

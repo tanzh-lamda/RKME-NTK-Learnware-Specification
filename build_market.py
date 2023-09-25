@@ -5,6 +5,7 @@ from shutil import copyfile, rmtree
 
 import learnware
 import numpy as np
+import tqdm
 import yaml
 from learnware import specification
 from learnware.market import EasyMarket
@@ -31,7 +32,7 @@ def build_from_preprocessed(args, regenerate=True):
     dataloader = ImageDataLoader(data_root, args.n_uploaders, train=True)
 
     market_root = args.market_root
-    for i, (train_X, train_y, val_X, val_y) in enumerate(dataloader):
+    for i, (train_X, train_y, val_X, val_y) in tqdm.tqdm(enumerate(dataloader), total=args.n_uploaders):
         dir_path = os.path.join(market_root, args.data, args.spec, "learnware_{:d}".format(i))
         os.makedirs(dir_path, exist_ok=True)
 
@@ -39,7 +40,7 @@ def build_from_preprocessed(args, regenerate=True):
             zip_path_list.append(dir_path + ".zip")
             continue
 
-        print("Preparing Learnware {:d} with {:s} specification".format(i, args.spec))
+        # print("Preparing Learnware {:d} with {:s} specification".format(i, args.spec))
         # Copy Model File
         model_file = os.path.join(dir_path, "model.pth")
         copyfile(os.path.join(data_root, "models", "uploader_{:d}.pth".format(i)),
@@ -47,13 +48,14 @@ def build_from_preprocessed(args, regenerate=True):
 
         # Make Specification
         if args.spec == "rbf":
-            spec = specification.utils.generate_rkme_spec(X=train_X, gamma=0.1, cuda_idx=0)
+            spec = specification.utils.generate_rkme_spec(X=train_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
             spec = RKMEStatSpecification(model_channel=args.model_channel,
                                         n_features=args.n_features,
                                         activation=args.activation,
                                         cuda_idx=args.cuda_idx)
-            spec.generate_stat_spec_from_data(train_X)
+            # TODO:
+            spec.generate_stat_spec_from_data(val_X, K=args.K, reduce=True)
         else:
             raise NotImplementedError("Not Support", args.spec)
         spec.save(os.path.join(dir_path, "spec.json"))

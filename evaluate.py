@@ -30,10 +30,10 @@ def user_test(data_X, data_y, model, batch_size=128, device=None):
 
     return acc
 
-def models_test(test_X, test_y, model_list):
+def models_test(test_X, test_y, model_list, device):
     acc_list = []
     for model in model_list:
-        acc = user_test(test_X, test_y, model)
+        acc = user_test(test_X, test_y, model, device=device)
         acc_list.append(acc)
     return acc_list
 
@@ -44,12 +44,13 @@ def evaluate_market_performance(args, easy_market):
     acc = []
     for i, (test_X, test_y) in enumerate(dataloader):
         if args.spec == "rbf":
-            stat_spec = specification.utils.generate_rkme_spec(X=test_X, gamma=0.1, cuda_idx=0)
+            stat_spec = specification.utils.generate_rkme_spec(X=test_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
             stat_spec = RKMEStatSpecification(model_channel=args.model_channel,
-                                        n_features=args.n_features,
-                                        activation=args.activation)
-            stat_spec.generate_stat_spec_from_data(test_X)
+                                                n_features=args.n_features,
+                                                activation=args.activation,
+                                                cuda_idx=args.cuda_idx)
+            stat_spec.generate_stat_spec_from_data(test_X, reduce=True, K=args.K)
         else:
             raise NotImplementedError()
 
