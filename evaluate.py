@@ -50,7 +50,7 @@ def evaluate_market_performance(args, easy_market):
                                                 n_features=args.n_features,
                                                 activation=args.activation,
                                                 cuda_idx=args.cuda_idx)
-            stat_spec.generate_stat_spec_from_data(test_X, reduce=True, K=args.K)
+            stat_spec.generate_stat_spec_from_data(test_X, reduce=True, steps=args.ntk_steps, K=args.K)
         else:
             raise NotImplementedError()
 

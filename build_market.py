@@ -9,6 +9,7 @@ import tqdm
 import yaml
 from learnware import specification
 from learnware.market import EasyMarket
+from learnware.specification.rkme import choose_device
 
 from preprocess.dataloader import ImageDataLoader
 from utils.ntk_rkme import RKMEStatSpecification
@@ -33,7 +34,7 @@ def build_from_preprocessed(args, regenerate=True):
 
     market_root = args.market_root
     for i, (train_X, train_y, val_X, val_y) in tqdm.tqdm(enumerate(dataloader), total=args.n_uploaders):
-        dir_path = os.path.join(market_root, args.data, args.spec, "learnware_{:d}".format(i))
+        dir_path = os.path.join(market_root, args.data, "{}_{:d}".format(args.spec, args.id), "learnware_{:d}".format(i))
         os.makedirs(dir_path, exist_ok=True)
 
         if not regenerate:
@@ -54,8 +55,8 @@ def build_from_preprocessed(args, regenerate=True):
                                         n_features=args.n_features,
                                         activation=args.activation,
                                         cuda_idx=args.cuda_idx)
-            # TODO:
-            spec.generate_stat_spec_from_data(val_X, K=args.K, reduce=True)
+
+            spec.generate_stat_spec_from_data(val_X, K=args.K, steps=args.ntk_steps, reduce=True)
         else:
             raise NotImplementedError("Not Support", args.spec)
         spec.save(os.path.join(dir_path, "spec.json"))
@@ -68,19 +69,18 @@ def build_from_preprocessed(args, regenerate=True):
                          "cifar10_init.py"), init_file
         )  # cp cifar10_init.py init_file
 
-        if args.spec == "ntk":
-            with open(os.path.join(market_root, "learnware_example",
-                                  "{}.yaml".format(args.spec)), "r") as yaml_templet,\
-                open(yaml_file, "w") as yaml_target:
+        with open(os.path.join(market_root, "learnware_example",
+                              "{}.yaml".format(args.spec)), "r") as yaml_templet,\
+            open(yaml_file, "w") as yaml_target:
 
-                yaml_content = yaml.load(yaml_templet, Loader=yaml.FullLoader)
+            yaml_content = yaml.load(yaml_templet, Loader=yaml.FullLoader)
+
+            yaml_content["model"]["kwargs"]["device"] = str(choose_device(args.cuda_idx))
+            if args.spec == "ntk":
                 yaml_content["stat_specifications"][0]["kwargs"] = args.__dict__
 
-                yaml.dump(yaml_content, yaml_target)
-        elif args.spec == "rbf":
-            copyfile(os.path.join(market_root, "learnware_example",
-                                  "{}.yaml".format(args.spec)),
-                     yaml_file)  # cp rbf.yaml yaml_file
+            yaml.dump(yaml_content, yaml_target)
+
 
         zip_file = dir_path + ".zip"
         # zip -q -r -j zip_file dir_path

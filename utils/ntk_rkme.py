@@ -16,7 +16,10 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from utils.random_feature_model import build_model
 
+
+
 class RKMEStatSpecification(BaseStatSpecification):
+    GENERATE_COUNT = 0
     # Lazy Mode
     # 好像要单例模式了, 只能有一个网络实例,不然算的似乎不行
     ntk_calculator = None
@@ -37,6 +40,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         self.n_features = kwargs["n_features"]
         self.random_models = None
 
+        self.z_features_buffer = None
         setup_seed(0)
 
     def generate_stat_spec_from_data(
@@ -81,7 +85,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         # Reshape to original dimensions
         X = X.reshape(X_shape)
-        self.z = self.z.reshape(Z_shape).float()
+        self.z = self.z.reshape(Z_shape).to(self.device).float()
         with torch.no_grad():
             x_features = self._generate_random_feature(X)
         self._update_beta(x_features, nonnegative_beta)
@@ -91,6 +95,9 @@ class RKMEStatSpecification(BaseStatSpecification):
         for i in range(steps):
             self._update_z(alpha, x_features, optimizer)
             self._update_beta(x_features, nonnegative_beta)
+        
+        with torch.no_grad():
+            self.z_features_buffer = self._generate_random_feature(self.z)
 
 
     def _init_z_by_faiss(self, X: Union[np.ndarray, torch.tensor], K: int):
@@ -190,7 +197,7 @@ class RKMEStatSpecification(BaseStatSpecification):
             optimizer.step()
 
 
-    def _generate_random_feature(self, data_X, batch_size=1024) -> torch.Tensor:
+    def _generate_random_feature(self, data_X, batch_size=4096) -> torch.Tensor:
         X_features_list = []
         if not torch.is_tensor(data_X):
             data_X = torch.from_numpy(data_X)
@@ -208,6 +215,8 @@ class RKMEStatSpecification(BaseStatSpecification):
             X_features_list.append(curr_features)
         X_features = torch.cat(X_features_list, 1)
         X_features = X_features / sqrt(self.n_models * self.n_features)
+
+        RKMEStatSpecification.GENERATE_COUNT += 1
 
         return X_features
 
@@ -227,9 +236,15 @@ class RKMEStatSpecification(BaseStatSpecification):
     def inner_prod(self, Phi2) -> float:
         beta_1 = self.beta.reshape(1, -1).to(self.device)
         beta_2 = Phi2.beta.reshape(1, -1).to(self.device)
-        Z1 = self.z.to(self.device)
-        Z2 = Phi2.z.to(self.device)
-        v = torch.sum(self._calc_ntk_from_raw(Z1, Z2) * (beta_1.T @ beta_2))
+        if self.z_features_buffer is None:
+            Z1 = self.z.to(self.device)
+            self.z_features_buffer = self._generate_random_feature(Z1)
+        if Phi2.z_features_buffer is None:
+            Z2 = Phi2.z.to(self.device)
+            Phi2.z_features_buffer = Phi2._generate_random_feature(Z2)
+
+        v = torch.sum(self._calc_ntk_from_feature(
+            self.z_features_buffer, Phi2.z_features_buffer) * (beta_1.T @ beta_2))
 
         return float(v)
 
@@ -243,7 +258,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return float(term1 - 2 * term2 + term3)
 
-    def _calc_ntk_from_raw(self, x1, x2, batch_size=1024):
+    def _calc_ntk_from_raw(self, x1, x2, batch_size=4096):
         x1_feature = self._generate_random_feature(x1, batch_size=batch_size)
         x2_feature = self._generate_random_feature(x2, batch_size=batch_size)
 
@@ -276,7 +291,9 @@ class RKMEStatSpecification(BaseStatSpecification):
             rkme_to_save["beta"] = rkme_to_save["beta"].detach().cpu().numpy()
         rkme_to_save["beta"] = rkme_to_save["beta"].tolist()
         rkme_to_save["device"] = "gpu" if rkme_to_save["cuda_idx"] != -1 else "cpu"
+
         rkme_to_save["random_models"] = "<dynamically generated>"
+        rkme_to_save["z_features_buffer"] = None
         json.dump(
             rkme_to_save,
             codecs.open(save_path, "w", encoding="utf-8"),
@@ -309,10 +326,14 @@ class RKMEStatSpecification(BaseStatSpecification):
                                                                rkme_load["sigma"],
                                                                rkme_load["n_models"],
                                                                rkme_load["device"])
-
             for d in self.__dir__():
                 if d in rkme_load.keys():
                     setattr(self, d, rkme_load[d])
+
+            self.beta = self.beta.to(self.device)
+            self.z = self.z.to(self.device)
+            self.z_features_buffer = self._generate_random_feature(self.z).to(self.device)
+
             return True
         else:
             return False
