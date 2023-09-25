@@ -50,7 +50,9 @@ parser.add_argument('--n_features', type=int, required=False, default=64,
 parser.add_argument('--activation', type=str, required=False,
                     default='relu', help='activation of random model')
 parser.add_argument('--ntk_steps', type=int, required=False,
-                    default=3, help='steps of optimization')
+                    default=40, help='steps of optimization')
+parser.add_argument('--sigma', type=float, required=False,
+                    default=0.1, help='standard variance of random models')
 
 args = parser.parse_args()
 
@@ -58,10 +60,11 @@ args = parser.parse_args()
 if __name__ == "__main__":
     easy.logger.setLevel(logging.WARNING)
 
-    if args.resplit:
-        generate('cifar10')
-    if args.resplit or args.retrain:
-        train_model()
+    # 避免误触
+    # if args.resplit:
+    #     generate('cifar10')
+    # if args.resplit or args.retrain:
+    #     train_model()
 
     # best_match_performance(args)
     learnware_list = build_from_preprocessed(args, regenerate=args.regenerate)

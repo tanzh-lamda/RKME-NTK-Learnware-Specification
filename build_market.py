@@ -54,6 +54,7 @@ def build_from_preprocessed(args, regenerate=True):
             spec = RKMEStatSpecification(model_channel=args.model_channel,
                                         n_features=args.n_features,
                                         activation=args.activation,
+                                        sigma=args.sigma,
                                         cuda_idx=args.cuda_idx)
 
             spec.generate_stat_spec_from_data(val_X, K=args.K, steps=args.ntk_steps, reduce=True)
@@ -102,9 +103,7 @@ def build_from_preprocessed(args, regenerate=True):
 def upload_to_easy_market(args, zip_path_list):
     learnware.init()
     np.random.seed(2023)
-    easy_market = EasyMarket(market_id="NTK-RF", rebuild=True)
-
-    print("Total Item:", len(easy_market))
+    easy_market = EasyMarket(market_id="NTK-RF-{:d}".format(args.id), rebuild=True)
 
     for idx, zip_path in enumerate(zip_path_list):
         semantic_spec = copy.deepcopy(user_semantic)
@@ -112,5 +111,7 @@ def upload_to_easy_market(args, zip_path_list):
         semantic_spec["Description"]["Values"] = "test_learnware_number_{:d}".format(idx)
         semantic_spec["Scenario"]["Values"] = [args.data]
         easy_market.add_learnware(zip_path, semantic_spec)
+
+    print("Total Item:", len(easy_market))
 
     return easy_market
