@@ -53,11 +53,7 @@ def build_from_preprocessed(args, regenerate=True):
         if args.spec == "rbf":
             spec = specification.utils.generate_rkme_spec(X=train_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
-            spec = RKMEStatSpecification(model_channel=args.model_channel,
-                                        n_features=args.n_features,
-                                        activation=args.activation,
-                                        sigma=args.sigma,
-                                        cuda_idx=args.cuda_idx)
+            spec = RKMEStatSpecification(**args.__dict__)
 
             spec.generate_stat_spec_from_data(val_X, K=args.K, steps=args.ntk_steps, reduce=True)
         else:
@@ -116,6 +112,6 @@ def upload_to_easy_market(args, zip_path_list):
         semantic_spec["Output"]['Dimension'] = 10
         easy_market.add_learnware(zip_path, semantic_spec)
 
-    logger.debug("Total Item:", len(easy_market))
+    logger.debug("Total Item: {:d}".format(len(easy_market)))
 
     return easy_market

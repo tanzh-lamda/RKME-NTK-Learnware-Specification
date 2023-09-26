@@ -44,6 +44,8 @@ parser.add_argument('--n_uploaders', type=int, required=False, default=50, help=
 parser.add_argument('--n_users', type=int, required=False, default=50, help='Number of users')
 
 #ntk
+parser.add_argument('--model', type=str, required=False,
+                    default="resnet", help='The model used to generate randome features')
 parser.add_argument('--model_channel', type=int, required=False,
                     default=32, help='channel of random model')
 parser.add_argument('--n_features', type=int, required=False, default=64,
@@ -88,8 +90,9 @@ if __name__ == "__main__":
 
     logger.debug("一共GENERATE: {:d}".format(ntk_rkme.RKMEStatSpecification.GENERATE_COUNT))
 
-    # TODO: 将这个和logger放一起,输出到硬盘一份,免得调参结果丢失
-    logger.info("=" * 20 + "ARGS" + "=" * 20)
+    # TODO: 细致处理一下Logger的记录
+    # TODO: Clerk类记录精度，有利于网格搜索
+    # logger.info("=" * 20 + "ARGS" + "=" * 20)
     for k, v in args.__dict__.items():
         logger.info("{:<10}:{}".format(k, v))
     logger.info("=" * 45)

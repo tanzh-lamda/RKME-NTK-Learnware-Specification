@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 
@@ -12,7 +13,7 @@ from preprocess.dataloader import ImageDataLoader
 from utils.ntk_rkme import RKMEStatSpecification
 from utils.reuse import AveragingReuser
 
-
+@DeprecationWarning
 def user_test(data_X, data_y, model, batch_size=128, device=None):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,7 +30,7 @@ def user_test(data_X, data_y, model, batch_size=128, device=None):
     # print("Accuracy: {:.2f}".format(acc))
 
     return acc
-
+@DeprecationWarning
 def models_test(test_X, test_y, model_list, device):
     acc_list = []
     for model in model_list:
@@ -55,6 +56,9 @@ def evaluate_market_performance(args, easy_market):
         else:
             raise NotImplementedError()
 
+        # semantic_spec = copy.deepcopy(user_semantic)
+        # semantic_spec["Scenario"]["Values"] = [args.data]
+        # semantic_spec["Output"]['Dimension'] = 10
         user_info = BaseUserInfo(semantic_spec=user_semantic, stat_info={"RKMEStatSpecification": stat_spec})
 
         sorted_score_list, single_learnware_list,\

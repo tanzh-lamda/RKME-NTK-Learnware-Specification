@@ -21,12 +21,10 @@ from utils.random_feature_model import build_model
 class RKMEStatSpecification(BaseStatSpecification):
     GENERATE_COUNT = 0
     # Lazy Mode
-    # 好像要单例模式了, 只能有一个网络实例,不然算的似乎不行
+    # 可能需要单例模式，这样也可以leverage一下特征提取能力
     ntk_calculator = None
 
-    def __init__(self, sigma: float = 0.1,
-                 n_models=8, cuda_idx: int = -1,
-                 **kwargs):
+    def __init__(self, n_models=8, cuda_idx: int = -1, **kwargs):
         self.z = None
         self.beta = None
         self.num_points = 0
@@ -34,7 +32,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         torch.cuda.empty_cache()
         self.device = choose_device(cuda_idx=cuda_idx)
 
-        self.sigma = sigma
         self.n_models = n_models
         self.kwargs = kwargs
         self.n_features = kwargs["n_features"]
@@ -58,8 +55,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         Z_shape = tuple([K] + list(X_shape)[1:])
         X = X.reshape(self.num_points, -1)
 
-        self.random_models = self._generate_models(self.kwargs, self.sigma,
-                                                   self.n_models, self.device)
+        self.random_models = self._generate_models(self.kwargs, self.n_models, self.device)
 
         # Check data values
         X[np.isinf(X) | np.isneginf(X) | np.isposinf(X) | np.isneginf(X)] = np.nan
@@ -118,7 +114,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         self.z = center
 
     @classmethod
-    def _generate_models(cls, kwargs, sigma, n_models, device, fixed_seed=None):
+    def _generate_models(cls, kwargs, n_models, device, fixed_seed=None):
         if cls.ntk_calculator is not None:
             return cls.ntk_calculator
 
@@ -127,8 +123,8 @@ class RKMEStatSpecification(BaseStatSpecification):
         model_args = {'input_dim': 3, 'n_channels': kwargs["model_channel"],
                       'n_random_features': kwargs["n_features"],
                       'net_depth': 3, 'net_act': kwargs["activation"],
-                      'mu': 0, 'sigma': sigma}
-        model_class = build_model("resnet", **model_args)
+                      'mu': 0, 'sigma': kwargs["sigma"]}
+        model_class = build_model(kwargs["model"], **model_args)
 
         models = []
         for m in range(n_models):
@@ -323,7 +319,6 @@ class RKMEStatSpecification(BaseStatSpecification):
             rkme_load["z"] = torch.from_numpy(np.array(rkme_load["z"])).float()
             rkme_load["beta"] = torch.from_numpy(np.array(rkme_load["beta"]))
             rkme_load["random_models"] = self._generate_models(rkme_load["kwargs"],
-                                                               rkme_load["sigma"],
                                                                rkme_load["n_models"],
                                                                rkme_load["device"])
             for d in self.__dir__():
