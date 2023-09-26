@@ -1,5 +1,6 @@
 import argparse
 import logging
+import sys
 
 import fire
 import torch
@@ -8,7 +9,7 @@ from learnware.market import easy
 
 from benchmark import best_match_performance
 from build_market import build_from_preprocessed, upload_to_easy_market
-from evaluate import evaluate_market_performance
+from evaluate_market import evaluate_market_performance
 from preprocess.split_data import generate
 from preprocess.train_model import train_model
 from utils import ntk_rkme
@@ -56,6 +57,20 @@ parser.add_argument('--sigma', type=float, required=False,
 
 args = parser.parse_args()
 
+logger = logging.getLogger("ntk-experiment")
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging.DEBUG)
+stdout_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('Grid Search.log')
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stdout_handler)
 
 if __name__ == "__main__":
     easy.logger.setLevel(logging.WARNING)
@@ -71,9 +86,10 @@ if __name__ == "__main__":
     market = upload_to_easy_market(args, learnware_list)
     evaluate_market_performance(args, market)
 
-    print("一共GENERATE:", ntk_rkme.RKMEStatSpecification.GENERATE_COUNT)
+    logger.debug("一共GENERATE: {:d}".format(ntk_rkme.RKMEStatSpecification.GENERATE_COUNT))
 
-    print("=" * 20 + "ARGS" + "=" * 20)
+    # TODO: 将这个和logger放一起,输出到硬盘一份,免得调参结果丢失
+    logger.info("=" * 20 + "ARGS" + "=" * 20)
     for k, v in args.__dict__.items():
-        print(k, '\t', v)
-    print("=" * 45)
+        logger.info("{:<10}:{}".format(k, v))
+    logger.info("=" * 45)

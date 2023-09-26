@@ -37,6 +37,7 @@ def models_test(test_X, test_y, model_list, device):
         acc_list.append(acc)
     return acc_list
 
+logger = logging.getLogger("ntk-experiment")
 
 def evaluate_market_performance(args, easy_market):
     data_root = os.path.join(args.data_root, 'learnware_market_data', args.data)
@@ -63,6 +64,6 @@ def evaluate_market_performance(args, easy_market):
 
         curr_acc = np.mean(ensemble_predict_y == test_y)
         acc.append(curr_acc)
-        print("Accuracy for user {:d} with {} kernel:".format(i, args.spec), curr_acc)
+        logger.debug("Accuracy for user {:d} with {} kernel: {:.3f}".format(i, args.spec, curr_acc))
 
-    print("Accuracy:", np.mean(acc), np.std(acc))
+    logger.info("Accuracy {:.3f}({:.3f})".format(np.mean(acc), np.std(acc)))

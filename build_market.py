@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 import zipfile
 from shutil import copyfile, rmtree
@@ -24,6 +25,7 @@ user_semantic = {
     "Scenario": {"Values": [], "Type": "Tag"},
     "Description": {"Values": "", "Type": "String"},
     "Name": {"Values": "", "Type": "String"},
+    "Output": {"Values": "", "Dimension": 0}
 }
 
 
@@ -99,6 +101,7 @@ def build_from_preprocessed(args, regenerate=True):
 
     return zip_path_list
 
+logger = logging.getLogger("ntk-experiment")
 
 def upload_to_easy_market(args, zip_path_list):
     learnware.init()
@@ -110,8 +113,9 @@ def upload_to_easy_market(args, zip_path_list):
         semantic_spec["Name"]["Values"] = "learnware_{:d}".format(idx)
         semantic_spec["Description"]["Values"] = "test_learnware_number_{:d}".format(idx)
         semantic_spec["Scenario"]["Values"] = [args.data]
+        semantic_spec["Output"]['Dimension'] = 10
         easy_market.add_learnware(zip_path, semantic_spec)
 
-    print("Total Item:", len(easy_market))
+    logger.debug("Total Item:", len(easy_market))
 
     return easy_market
