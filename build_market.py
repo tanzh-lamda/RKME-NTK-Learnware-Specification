@@ -13,6 +13,7 @@ from learnware.market import EasyMarket
 from learnware.specification.rkme import choose_device
 
 from preprocess.dataloader import ImageDataLoader
+from utils.clerk import get_custom_logger
 from utils.ntk_rkme import RKMEStatSpecification
 
 user_semantic = {
@@ -97,8 +98,6 @@ def build_from_preprocessed(args, regenerate=True):
 
     return zip_path_list
 
-logger = logging.getLogger("ntk-experiment")
-
 def upload_to_easy_market(args, zip_path_list):
     learnware.init()
     np.random.seed(2023)
@@ -112,6 +111,7 @@ def upload_to_easy_market(args, zip_path_list):
         semantic_spec["Output"]['Dimension'] = 10
         easy_market.add_learnware(zip_path, semantic_spec)
 
+    logger = get_custom_logger()
     logger.debug("Total Item: {:d}".format(len(easy_market)))
 
     return easy_market

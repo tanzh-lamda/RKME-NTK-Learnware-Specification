@@ -34,7 +34,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         self.n_models = n_models
         self.kwargs = kwargs
-        self.n_features = kwargs["n_features"]
+        self.n_random_features = kwargs["n_random_features"]
         self.random_models = None
 
         self.z_features_buffer = None
@@ -120,9 +120,9 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         # 由于一些历史原因，这个input_dim其实对应了数据的channel
         # 而这里的channel，指的其实是模型的宽度
-        model_args = {'input_dim': 3, 'n_channels': kwargs["model_channel"],
-                      'n_random_features': kwargs["n_features"],
-                      'net_depth': 3, 'net_act': kwargs["activation"],
+        model_args = {'input_dim': 3, 'n_channels': kwargs["n_channels"],
+                      'n_random_features': kwargs["n_random_features"],
+                      'net_depth': kwargs['net_depth'], 'net_act': kwargs["activation"],
                       'mu': 0, 'sigma': kwargs["sigma"]}
         model_class = build_model(kwargs["model"], **model_args)
 
@@ -210,7 +210,7 @@ class RKMEStatSpecification(BaseStatSpecification):
             curr_features = torch.cat(curr_features_list, 0)
             X_features_list.append(curr_features)
         X_features = torch.cat(X_features_list, 1)
-        X_features = X_features / sqrt(self.n_models * self.n_features)
+        X_features = X_features / sqrt(self.n_models * self.n_random_features)
 
         RKMEStatSpecification.GENERATE_COUNT += 1
 
@@ -327,7 +327,8 @@ class RKMEStatSpecification(BaseStatSpecification):
 
             self.beta = self.beta.to(self.device)
             self.z = self.z.to(self.device)
-            self.z_features_buffer = self._generate_random_feature(self.z).to(self.device)
+            with torch.no_grad():
+                self.z_features_buffer = self._generate_random_feature(self.z)
 
             return True
         else:
