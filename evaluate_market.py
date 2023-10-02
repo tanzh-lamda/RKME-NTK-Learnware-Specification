@@ -19,7 +19,7 @@ from utils.reuse import AveragingReuser
 def evaluate_market_performance(args, easy_market) -> Dict:
     logger = get_custom_logger()
 
-    data_root = os.path.join(args.data_root, 'learnware_market_data', args.data)
+    data_root = os.path.join(args.data_root, 'learnware_market_data', "{}_{:d}".format(args.data, args.data_id))
     dataloader = ImageDataLoader(data_root, args.n_users, train=False)
     acc = []
     for i, (test_X, test_y) in enumerate(dataloader):
@@ -34,7 +34,7 @@ def evaluate_market_performance(args, easy_market) -> Dict:
         user_info = BaseUserInfo(semantic_spec=user_semantic, stat_info={"RKMEStatSpecification": stat_spec})
 
         sorted_score_list, single_learnware_list,\
-            mixture_score, mixture_learnware_list = easy_market.search_learnware(user_info, max_search_num=1)
+            mixture_score, mixture_learnware_list = easy_market.search_learnware(user_info, max_search_num=3)
         reuse_ensemble = AveragingReuser(learnware_list=mixture_learnware_list, mode="vote")
         ensemble_predict_y = np.argmax(reuse_ensemble.predict(user_data=test_X), axis=-1)
 

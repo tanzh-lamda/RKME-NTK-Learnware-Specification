@@ -21,12 +21,6 @@ parser.add_argument('--mode', type=str, default="regular", required=False)
 # train
 parser.add_argument('--cuda_idx', type=int, required=False, default=0,
                     help='ID of device')
-parser.add_argument('--resplit', default=False, action=argparse.BooleanOptionalAction,
-                    help='Resplit datasets')
-parser.add_argument('--retrain', default=False, action=argparse.BooleanOptionalAction,
-                    help='Retrain models')
-parser.add_argument('--regenerate', default=False, action=argparse.BooleanOptionalAction,
-                    help='regenerate learnwares')
 parser.add_argument('--no_reduce', default=False, action=argparse.BooleanOptionalAction, help='whether to reduce')
 
 # learnware
@@ -36,19 +30,22 @@ parser.add_argument('--spec', type=str, required=False, default='rbf',
                     help='Specification, options: [rbf, NTK]')
 parser.add_argument('--market_root', type=str, required=False, default='market',
                     help='Path of Market')
-parser.add_argument('-K', type=int, required=False, default=100,
+parser.add_argument('-K', type=int, required=False, default=50,
                     help='number of reduced points')
 
 # data
+parser.add_argument('--resplit', default=False, action=argparse.BooleanOptionalAction,
+                    help='Resplit datasets')
 parser.add_argument('--data', type=str, required=False, default='cifar10', help='dataset type')
 parser.add_argument('--data_root', type=str, required=False, default=r"image_models",
                     help='The path of images and models')
 parser.add_argument('--n_uploaders', type=int, required=False, default=50, help='Number of uploaders')
 parser.add_argument('--n_users', type=int, required=False, default=50, help='Number of users')
+parser.add_argument('--data_id', type=int, required=False, default=0, help='market data id')
 
 #ntk
 parser.add_argument('--model', type=str, required=False,
-                    default="conv", help='The model used to generate randome features')
+                    default="conv", help='The model used to generate random features')
 parser.add_argument('--n_random_features', type=int, required=False, default=64,
                     help='out features of random model')
 parser.add_argument('--n_channels', type=int, required=False, default=64,
@@ -69,10 +66,12 @@ CANDIDATES = {
     "ntk_steps": [30, 35, 40, 45, 50, 55, 60],
     "sigma": [0.003, 0.004, 0.005, 0.006, 0.01, 0.025, 0.05, 0.1],
     "n_random_features": [32, 64, 96, 128, 196, 256],
-    "n_channels": [32, 64, 96, 128, 160, 196]
+    "n_channels": [32, 64, 96, 128, 160, 196],
+    "data_id": [0, 1, 2, 3, 4, 5, 6, 7],
+    "net_depth": [3, 3, 4, 4, 5, 5, 6, 6]
 }
 
-AUTO_PARAM = "ntk_steps"
+AUTO_PARAM = "data_id"
 
 # setattr
 def _grid_search_mode():
@@ -106,7 +105,7 @@ def _grid_search_mode():
 def _regular_mode():
     easy.logger.setLevel(logging.WARNING)
 
-    learnware_list = build_from_preprocessed(args, regenerate=args.regenerate)
+    learnware_list = build_from_preprocessed(args, regenerate=True)
     market = upload_to_easy_market(args, learnware_list)
     evaluate_market_performance(args, market)
 
@@ -118,16 +117,23 @@ def _regular_mode():
         logger.info("{:<10}:{}".format(k, v))
     logger.info("=" * 45)
 
+def _re_split_mode():
+    generate(args)
+    train_model(args)
+    best_match_performance(args)
+
 def _auto_mode(search_key):
     logger = get_custom_logger()
 
     available_cuda_idx = [1, 2, 3, 4, 5, 6, 7, 0]
-    # available_cuda_idx = [0, 2, 3, 7]
 
     setattr(args, "cuda_idx", available_cuda_idx[args.id % len(available_cuda_idx)])
     if args.id >= len(CANDIDATES[search_key]):
         return
     setattr(args, search_key, CANDIDATES[search_key][args.id])
+
+    if args.resplit:
+        _re_split_mode()
 
     for k, v in args.__dict__.items():
         if k in CANDIDATES:
@@ -135,15 +141,11 @@ def _auto_mode(search_key):
     logger.info("=" * 45)
     _regular_mode()
 
+
+
 if __name__ == "__main__":
-    # if args.resplit:
-    #     generate('cifar10')
-    # if args.resplit or args.retrain:
-    #     train_model()
-
-    # best_match_performance(args)
-
     # 我高度建议你使用auto模式搜索参数
+
     if args.mode == "grid":
         _grid_search_mode()
     elif args.mode == "regular":

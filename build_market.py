@@ -32,7 +32,7 @@ user_semantic = {
 
 def build_from_preprocessed(args, regenerate=True):
     zip_path_list = []
-    data_root = os.path.join(args.data_root, 'learnware_market_data', args.data)
+    data_root = os.path.join(args.data_root, 'learnware_market_data', "{}_{:d}".format(args.data, args.data_id))
     dataloader = ImageDataLoader(data_root, args.n_uploaders, train=True)
 
     market_root = args.market_root

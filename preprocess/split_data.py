@@ -94,8 +94,10 @@ def generate_user(data_x, data_y, size, weights, n_users=50, data_save_root=None
 
 USER_WEIGHTS = [3, 3, 1, 1, 1, 1, 0, 0, 0, 0]
 UPLOADER_WEIGHTS = [4, 4, 1, 1, 0, 0, 0, 0, 0, 0]
-def generate(dataset='cifar10'):
-    curr_save_root = os.path.join(SAVE_ROOT, dataset)
+def generate(args):
+    dataset = args.data
+
+    curr_save_root = os.path.join(SAVE_ROOT, "{}_{:d}".format(dataset, args.data_id))
     if dataset == 'cifar10':
         train_X, train_y, test_X, test_y = data_downloader.get_cifar10(output_channels = 3, image_size = 32)
         # print(train_X.dtype, train_y.dtype)

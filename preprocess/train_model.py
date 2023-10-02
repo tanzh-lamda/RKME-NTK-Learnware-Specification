@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import os
 import numpy as np
+from learnware.specification.rkme import choose_device
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import matplotlib
@@ -56,10 +57,9 @@ def uploader_train(train_X, train_y, val_X, val_y, out_classes, epochs=35, batch
             print('Epoch: {}, Average Loss: {:.3f}'.format(epoch+1, np.mean(running_loss)))
 
     # Train Accuracy and print
-    val_acc = user_test(val_X, val_y, model)
-    train_acc = user_test(train_X, train_y, model)
+    val_acc = user_test(val_X, val_y, model, device=device)
+    train_acc = user_test(train_X, train_y, model, device=device)
     print("Train Accuracy: {:.2f}\tVal Accuracy: {:.2f}".format(train_acc, val_acc))
-    model.train()
     return model
 
 def user_test(data_X, data_y, model, batch_size=128, device=None):
@@ -80,20 +80,20 @@ def user_test(data_X, data_y, model, batch_size=128, device=None):
 
     return acc
 
-def models_test(test_X, test_y, model_list):
+def models_test(test_X, test_y, model_list, device=None):
     acc_list = []
     for model in model_list:
-        acc = user_test(test_X, test_y, model)
+        acc = user_test(test_X, test_y, model, device=device)
         acc_list.append(acc)
     return acc_list
 
-def train_model():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def train_model(args):
+    device = choose_device(args.cuda_idx)
     n_uploaders = 50
     n_users = 50
     n_classes = 10
-    dataset = 'cifar10'
-    data_root = os.path.join("image_models", 'learnware_market_data', dataset)
+    dataset = args.data
+    data_root = os.path.join("image_models", 'learnware_market_data', "{}_{:d}".format(dataset, args.data_id))
     dataloader = ImageDataLoader(data_root, n_uploaders, train=True)
 
     model_save_root = os.path.join(data_root, 'models')
@@ -102,7 +102,7 @@ def train_model():
     for i, data in enumerate(dataloader):
         print("=" * 40)
         print('Train on uploader {:d}, with size'.format(i), data[0].shape, data[2].shape)
-        model = uploader_train(*data, out_classes=n_classes)
+        model = uploader_train(*data, out_classes=n_classes, device=device)
         model_save_path = os.path.join(model_save_root, 'uploader_{:d}.pth'.format(i))
         torch.save(model.state_dict(), model_save_path)
         print("Model saved to '{}'".format(model_save_path))
@@ -112,7 +112,7 @@ def train_model():
     acc_matrix = []
     for i, (test_X, test_y) in enumerate(test_dataloader):
         print('Evaluate on user: %d' % i)
-        acc_list = models_test(test_X, test_y, model_list)
+        acc_list = models_test(test_X, test_y, model_list, device=device)
         print('Results: Max accuracy: %.2f, Min accuracy: %.2f, Average accuracy: %.2f'%(np.max(acc_list),
                                                                                         np.min(acc_list),
                                                                                         np.average(acc_list)))
@@ -124,49 +124,7 @@ def train_model():
     eval_results = os.path.join(model_save_root, 'eval_results.txt')
     np.savetxt(eval_results, np_acc_matrix)
     print("Eval Results Saved to '{}'".format(eval_results))
-    '''
-    if not args.seed is None:
-        torch.manual_seed(args.seed)
-    encoder_model = train(args)
-    model_save_path = os.path.join(data_save_root, "model.pth")
-    torch.save(encoder_model.state_dict(), model_save_path)
-    print("Model saved to: %s"%(model_save_path))
 
-    # Generate Encoding and Evaluate
-    train_dataset = HeteroLearnwareDataset(args.data_dir, args.filling_method)
-    test_dataset = HeteroLearnwareDataset(args.test_data_dir, args.filling_method)
-
-    classification_model = None
-    if not (args.classification_model is None):
-        classification_model = OriginModel(last_layer_feature=args.input_shape).to(device)
-        model_dict = torch.load(args.classification_model)
-        print(model_dict.keys())
-        print(classification_model.state_dict().keys())
-        classification_model.load_state_dict(model_dict, strict=False)
-        eval_original_acc(train_dataset, classification_model)
-        eval_original_acc(test_dataset, classification_model)
-    
-    print("Run on Training Dataset:")
-    train_encoding_save_path, train_rebuilt_save_path, train_label_save_path = test(train_dataset, encoder_model, data_save_root, classification_model, "train")
-    
-    if args.train_test:
-        print("Run on Test Dataset:")
-        test_encoding_save_path, test_rebuilt_save_path, test_label_save_path = test(test_dataset, encoder_model, data_save_root, classification_model, "test")
-
-    if args.draw == True:
-        print("Draw training results...")
-        draw(train_encoding_save_path, train_label_save_path, os.path.join(data_save_root, 'train_encoding_tsne.png'))
-        print("TSNE has been saved to %s"%(os.path.join(data_save_root, 'train_encoding_tsne.png')))
-        draw(train_rebuilt_save_path, train_label_save_path, os.path.join(data_save_root, 'train_rebuilt_tsne.png'))
-        print("TSNE has been saved to %s"%(os.path.join(data_save_root, 'train_rebuilt_tsne.png')))
-
-        if args.train_test:
-            print("Drawing test results....")
-            draw(test_encoding_save_path, test_label_save_path, os.path.join(data_save_root, 'test_encoding_tsne.png'))
-            print("TSNE has been saved to %s"%(os.path.join(data_save_root, 'test_encoding_tsne.png')))
-            draw(test_encoding_save_path, test_label_save_path, os.path.join(data_save_root, 'test_rebuilt_tsne.png'))
-            print("TSNE has been saved to %s"%(os.path.join(data_save_root, 'test_rebuilt_tsne.png')))
-    '''
 
 if __name__ == '__main__':
     # main()
