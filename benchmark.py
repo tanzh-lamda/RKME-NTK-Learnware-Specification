@@ -34,7 +34,7 @@ def best_match_performance(args):
     device = choose_device(args.cuda_idx)
     data_root = os.path.join(args.data_root, "learnware_market_data", args.data)
 
-    best_match_by_user = cal_best_match(args)
+    best_match_by_user = cal_best_match(args, k=args.max_search_num)
 
     models = []
     for model_file in (os.path.join(data_root, "models", "uploader_{:d}.pth".format(i))
@@ -52,7 +52,9 @@ def best_match_performance(args):
         test_X, test_y = torch.asarray(test_X, device=device),\
             torch.asarray(test_y, device=device)
 
-        predict_y = torch.argmax(models[best_match_by_user[i]](test_X), dim=-1)
+        predict_y = torch.argmax(torch.sum(torch.stack(
+            [models[m](test_X) for m in best_match_by_user[i]],
+            dim=-1), dim=-1), dim=-1)
 
         curr_acc = np.mean((predict_y == test_y).cpu().detach().numpy())
         acc.append(curr_acc)

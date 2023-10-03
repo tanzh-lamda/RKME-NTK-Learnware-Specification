@@ -120,10 +120,13 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         # 由于一些历史原因，这个input_dim其实对应了数据的channel
         # 而这里的channel，指的其实是模型的宽度
-        model_args = {'input_dim': 3, 'n_channels': kwargs["n_channels"],
+        model_args = {'input_dim': 3,
                       'n_random_features': kwargs["n_random_features"],
+                      'mu': 0, 'sigma': kwargs["sigma"], 'k': 2,
+                      'chopped_head': True,
+                      'net_width': kwargs["net_width"],
                       'net_depth': kwargs['net_depth'], 'net_act': kwargs["activation"],
-                      'mu': 0, 'sigma': kwargs["sigma"]}
+                    }
         model_class = build_model(kwargs["model"], **model_args)
 
         models = []

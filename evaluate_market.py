@@ -33,8 +33,8 @@ def evaluate_market_performance(args, easy_market) -> Dict:
 
         user_info = BaseUserInfo(semantic_spec=user_semantic, stat_info={"RKMEStatSpecification": stat_spec})
 
-        sorted_score_list, single_learnware_list,\
-            mixture_score, mixture_learnware_list = easy_market.search_learnware(user_info, max_search_num=3)
+        sorted_score_list, single_learnware_list, mixture_score,\
+            mixture_learnware_list = easy_market.search_learnware(user_info, max_search_num=args.max_search_num)
         reuse_ensemble = AveragingReuser(learnware_list=mixture_learnware_list, mode="vote")
         ensemble_predict_y = np.argmax(reuse_ensemble.predict(user_data=test_X), axis=-1)
 

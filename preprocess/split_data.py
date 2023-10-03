@@ -100,8 +100,11 @@ def generate(args):
     curr_save_root = os.path.join(SAVE_ROOT, "{}_{:d}".format(dataset, args.data_id))
     if dataset == 'cifar10':
         train_X, train_y, test_X, test_y = data_downloader.get_cifar10(output_channels = 3, image_size = 32)
-        # print(train_X.dtype, train_y.dtype)
-        # print(train_X.size(), train_y, test_X.size(), test_y)
+
+        whitening_mat = data_downloader.get_zca_matrix(train_X, reg_coef=0.1)
+        train_X = data_downloader.transform_data(train_X, whitening_mat)
+        test_X = data_downloader.transform_data(test_X, whitening_mat)
+
     elif dataset == 'fashion':
         train_X, train_y, test_X, test_y = data_downloader.get_fashion_mnist(output_channels = 1, image_size = 32)
         print(train_X.shape, test_X.shape, train_y.shape, test_y.shape)

@@ -120,14 +120,14 @@ class GaussianLinear(torch.nn.Module):
         )
 
 class ConvNet_wide(nn.Module):
-    def __init__(self, input_dim, n_random_features, mu=None, sigma=None, k = 4, n_channels = 128, net_depth = 3, 
-                 net_act = 'relu', net_norm = 'none', net_pooling = 'maxpooling', im_size = (32,32), chopped_head = False):
+    def __init__(self, input_dim, n_random_features, mu=None, sigma=None, k = 4, net_width = 128, net_depth = 3,
+                 net_act = 'relu', net_norm = 'none', net_pooling = 'avgpooling', im_size = (32,32), chopped_head = False):
         self.k = k
         # print('Building Conv Model')
         super().__init__()
         
         # net_depth = 1
-        self.features, shape_feat = self._make_layers(input_dim, n_channels, net_depth, net_norm, 
+        self.features, shape_feat = self._make_layers(input_dim, net_width, net_depth, net_norm,
                                                       net_act, net_pooling, im_size, mu, sigma)
         # print(shape_feat)
         self.chopped_head = chopped_head

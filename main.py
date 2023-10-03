@@ -26,38 +26,39 @@ parser.add_argument('--no_reduce', default=False, action=argparse.BooleanOptiona
 # learnware
 parser.add_argument('--id', type=int, required=False, default=0,
                     help='Used for parallel training')
-parser.add_argument('--spec', type=str, required=False, default='rbf',
+parser.add_argument('--spec', type=str, required=False, default='ntk',
                     help='Specification, options: [rbf, NTK]')
 parser.add_argument('--market_root', type=str, required=False, default='market',
                     help='Path of Market')
+parser.add_argument('--max_search_num', type=int, required=False, default=3,
+                    help='Number of Max Search Learnware to ensemble')
 parser.add_argument('-K', type=int, required=False, default=50,
                     help='number of reduced points')
 
 # data
 parser.add_argument('--resplit', default=False, action=argparse.BooleanOptionalAction,
                     help='Resplit datasets')
-parser.add_argument('--data', type=str, required=False, default='cifar10', help='dataset type')
+parser.add_argument('--data', type=str, default='cifar10', help='dataset type')
 parser.add_argument('--data_root', type=str, required=False, default=r"image_models",
                     help='The path of images and models')
-parser.add_argument('--n_uploaders', type=int, required=False, default=50, help='Number of uploaders')
-parser.add_argument('--n_users', type=int, required=False, default=50, help='Number of users')
+parser.add_argument('--n_uploaders', type=int, default=50, help='Number of uploaders')
+parser.add_argument('--n_users', type=int, default=50, help='Number of users')
 parser.add_argument('--data_id', type=int, required=False, default=0, help='market data id')
 
 #ntk
-parser.add_argument('--model', type=str, required=False,
+parser.add_argument('--model', type=str,
                     default="conv", help='The model used to generate random features')
-parser.add_argument('--n_random_features', type=int, required=False, default=64,
+parser.add_argument('--n_random_features', type=int, default=4096,
                     help='out features of random model')
-parser.add_argument('--n_channels', type=int, required=False, default=64,
+parser.add_argument('--net_width', type=int, default=128,
                     help='# of inner channels of random model')
-parser.add_argument('--net_depth', type=int, required=False, default=3,
+parser.add_argument('--net_depth', type=int, default=3,
                     help='network depth of conv')
 parser.add_argument('--activation', type=str, required=False,
                     default='relu', help='activation of random model')
 parser.add_argument('--ntk_steps', type=int, required=False,
-                    default=45, help='steps of optimization')
-parser.add_argument('--sigma', type=float, required=False,
-                    default=0.005, help='standard variance of random models')
+                    default=30, help='steps of optimization')
+parser.add_argument('--sigma', type=float, default=None, help='standard variance of random models')
 
 args = parser.parse_args()
 
@@ -71,7 +72,7 @@ CANDIDATES = {
     "net_depth": [3, 3, 4, 4, 5, 5, 6, 6]
 }
 
-AUTO_PARAM = "data_id"
+AUTO_PARAM = "ntk_steps"
 
 # setattr
 def _grid_search_mode():
@@ -110,9 +111,7 @@ def _regular_mode():
     evaluate_market_performance(args, market)
 
     logger = get_custom_logger()
-    logger.debug("一共GENERATE: {:d}".format(ntk_rkme.RKMEStatSpecification.GENERATE_COUNT))
 
-    # logger.info("=" * 20 + "ARGS" + "=" * 20)
     for k, v in args.__dict__.items():
         logger.info("{:<10}:{}".format(k, v))
     logger.info("=" * 45)
@@ -146,7 +145,9 @@ def _auto_mode(search_key):
 if __name__ == "__main__":
     # 我高度建议你使用auto模式搜索参数
 
-    if args.mode == "grid":
+    if args.mode == "resplit":
+        _re_split_mode()
+    elif args.mode == "grid":
         _grid_search_mode()
     elif args.mode == "regular":
         _regular_mode()
