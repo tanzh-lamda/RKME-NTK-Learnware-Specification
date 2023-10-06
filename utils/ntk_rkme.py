@@ -12,7 +12,7 @@ import torch
 import torch_optimizer
 from learnware.specification import BaseStatSpecification
 from learnware.specification.rkme import solve_qp, choose_device, setup_seed
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader, random_split
 
 from utils.random_feature_model import build_model
 
@@ -40,12 +40,40 @@ class RKMEStatSpecification(BaseStatSpecification):
         self.z_features_buffer = None
         setup_seed(0)
 
+    @classmethod
+    def _generate_models(cls, kwargs, n_models, device, fixed_seed=None):
+        if cls.ntk_calculator is not None:
+            return cls.ntk_calculator
+
+        # 由于一些历史原因，这个input_dim其实对应了数据的channel
+        # 而这里的channel，指的其实是模型的宽度
+        model_args = {'input_dim': 3,
+                      'n_random_features': kwargs["n_random_features"],
+                      'mu': 0, 'sigma': kwargs["sigma"], 'k': 2,
+                      'chopped_head': True,
+                      'net_width': kwargs["net_width"],
+                      'net_depth': kwargs['net_depth'], 'net_act': kwargs["activation"],
+                      }
+        model_class = build_model(kwargs["model"], **model_args)
+
+        models = []
+        for m in range(n_models):
+            if fixed_seed is not None:
+                torch.manual_seed(fixed_seed[m])
+            model = model_class()
+            models.append(model.to(device))
+
+        cls.ntk_calculator = models
+
+        return models
+
     def generate_stat_spec_from_data(
         self,
         X: np.ndarray,
         K: int = 100,
         step_size: float = 0.01,
-        steps: int = 3,
+        steps: int=3,
+        early_stopping=False,
         nonnegative_beta: bool = True,
         reduce: bool = True,
     ):
@@ -81,17 +109,43 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         # Reshape to original dimensions
         X = X.reshape(X_shape)
+        X_train, X_val = None, None
+
+        if early_stopping:
+            np.random.shuffle(X)
+            X_train, X_val = np.split(X, [int(len(X) * 0.8)])
+        else:
+            X_train = X
+
         self.z = self.z.reshape(Z_shape).to(self.device).float()
         with torch.no_grad():
-            x_features = self._generate_random_feature(X)
-        self._update_beta(x_features, nonnegative_beta)
+            x_train_features = self._generate_random_feature(X_train)
+            if early_stopping:
+                x_val_features = self._generate_random_feature(X_val)
+
+        self._update_beta(x_train_features, nonnegative_beta)
         optimizer = torch_optimizer.AdaBelief([{"params": [self.z]}],
                                               lr=step_size, eps=1e-16)
         # Alternating optimize Z and beta
+        best_similarity, tolerance, best_z = None, 1, None
         for i in range(steps):
-            self._update_z(alpha, x_features, optimizer)
-            self._update_beta(x_features, nonnegative_beta)
-        
+            if tolerance <= 0:
+                break # Early Stopping
+            z_features = self._update_z(alpha, x_train_features, optimizer)
+            self._update_beta(x_train_features, nonnegative_beta)
+
+            if early_stopping:
+                tolerance -= 1
+                with torch.no_grad():
+                    similarity = torch.sum(self._calc_ntk_from_feature(
+                        z_features, x_val_features) * self.beta.reshape(-1, 1))
+                    if best_similarity is None or best_similarity < similarity:
+                        best_similarity = similarity
+                        best_z = self.z.clone().detach()
+                        tolerance = 10
+
+        if early_stopping:
+            self.z = best_z
         with torch.no_grad():
             self.z_features_buffer = self._generate_random_feature(self.z)
 
@@ -112,33 +166,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         kmeans.train(X)
         center = torch.from_numpy(kmeans.centroids)
         self.z = center
-
-    @classmethod
-    def _generate_models(cls, kwargs, n_models, device, fixed_seed=None):
-        if cls.ntk_calculator is not None:
-            return cls.ntk_calculator
-
-        # 由于一些历史原因，这个input_dim其实对应了数据的channel
-        # 而这里的channel，指的其实是模型的宽度
-        model_args = {'input_dim': 3,
-                      'n_random_features': kwargs["n_random_features"],
-                      'mu': 0, 'sigma': kwargs["sigma"], 'k': 2,
-                      'chopped_head': True,
-                      'net_width': kwargs["net_width"],
-                      'net_depth': kwargs['net_depth'], 'net_act': kwargs["activation"],
-                    }
-        model_class = build_model(kwargs["model"], **model_args)
-
-        models = []
-        for m in range(n_models):
-            if fixed_seed is not None:
-                torch.manual_seed(fixed_seed[m])
-            model = model_class()
-            models.append(model.to(device))
-
-        cls.ntk_calculator = models
-
-        return models
 
     @torch.no_grad()
     def _update_beta(self, x_features: Any, nonnegative_beta: bool = True):
@@ -182,7 +209,8 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         with torch.no_grad():
             beta = beta.unsqueeze(0)
-        # print('Update Z')
+
+        z_features = None
         for i in range(3):
             z_features = self._generate_random_feature(Z)
             K_z = self._calc_ntk_from_feature(z_features, z_features)
@@ -194,6 +222,8 @@ class RKMEStatSpecification(BaseStatSpecification):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        return z_features.detach()
 
 
     def _generate_random_feature(self, data_X, batch_size=4096) -> torch.Tensor:

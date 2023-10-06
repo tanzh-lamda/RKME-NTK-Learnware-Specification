@@ -24,7 +24,7 @@ def cal_best_match(args, k=1):
     ]
 
     if k == 1:
-        best_match = [np.argmax(np.asarray(u)) for u in similarities]
+        best_match = [[np.argmax(np.asarray(u))] for u in similarities]
     else:
         best_match = [np.argsort(-np.asarray(u))[:k] for u in similarities]
 

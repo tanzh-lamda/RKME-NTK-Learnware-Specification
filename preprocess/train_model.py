@@ -7,7 +7,7 @@ from learnware.specification.rkme import choose_device
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import matplotlib
-from torch.utils.data import TensorDataset, DataLoader, random_split
+from torch.utils.data import TensorDataset, DataLoader
 
 matplotlib.rc('pdf', fonttype=42)
 import numpy as np
