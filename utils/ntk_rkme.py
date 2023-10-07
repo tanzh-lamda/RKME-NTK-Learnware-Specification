@@ -42,11 +42,6 @@ class RKMEStatSpecification(BaseStatSpecification):
 
     @classmethod
     def _generate_models(cls, kwargs, n_models, device, fixed_seed=None):
-        if cls.ntk_calculator is not None:
-            return cls.ntk_calculator
-
-        # 由于一些历史原因，这个input_dim其实对应了数据的channel
-        # 而这里的channel，指的其实是模型的宽度
         model_args = {'input_dim': 3,
                       'n_random_features': kwargs["n_random_features"],
                       'mu': 0, 'sigma': kwargs["sigma"], 'k': 2,
@@ -56,16 +51,12 @@ class RKMEStatSpecification(BaseStatSpecification):
                       }
         model_class = build_model(kwargs["model"], **model_args)
 
-        models = []
-        for m in range(n_models):
+        def __builder(i):
             if fixed_seed is not None:
-                torch.manual_seed(fixed_seed[m])
-            model = model_class()
-            models.append(model.to(device))
+                torch.manual_seed(fixed_seed[i])
+            return model_class().to(device)
 
-        cls.ntk_calculator = models
-
-        return models
+        return (__builder(m) for m in range(n_models))
 
     def generate_stat_spec_from_data(
         self,
@@ -82,8 +73,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         X_shape = X.shape
         Z_shape = tuple([K] + list(X_shape)[1:])
         X = X.reshape(self.num_points, -1)
-
-        self.random_models = self._generate_models(self.kwargs, self.n_models, self.device)
 
         # Check data values
         X[np.isinf(X) | np.isneginf(X) | np.isposinf(X) | np.isneginf(X)] = np.nan
@@ -119,33 +108,33 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         self.z = self.z.reshape(Z_shape).to(self.device).float()
         with torch.no_grad():
-            x_train_features = self._generate_random_feature(X_train)
-            if early_stopping:
-                x_val_features = self._generate_random_feature(X_val)
-
-        self._update_beta(x_train_features, nonnegative_beta)
+            x_features = self._generate_random_feature(X_train)
+        self._update_beta(x_features, nonnegative_beta)
         optimizer = torch_optimizer.AdaBelief([{"params": [self.z]}],
                                               lr=step_size, eps=1e-16)
         # Alternating optimize Z and beta
-        best_similarity, tolerance, best_z = None, 1, None
+        # best_similarity, tolerance, best_z = None, 1, None
         for i in range(steps):
-            if tolerance <= 0:
-                break # Early Stopping
-            z_features = self._update_z(alpha, x_train_features, optimizer)
-            self._update_beta(x_train_features, nonnegative_beta)
+            # if tolerance <= 0:
+            #     break # Early Stopping
+            with torch.no_grad():
+                x_features = self._generate_random_feature(X_train)
+            self._update_z(alpha, x_features, optimizer)
+            self._update_beta(x_features, nonnegative_beta)
 
-            if early_stopping:
-                tolerance -= 1
-                with torch.no_grad():
-                    similarity = torch.sum(self._calc_ntk_from_feature(
-                        z_features, x_val_features) * self.beta.reshape(-1, 1))
-                    if best_similarity is None or best_similarity < similarity:
-                        best_similarity = similarity
-                        best_z = self.z.clone().detach()
-                        tolerance = 10
+            # if early_stopping:
+            #     tolerance -= 1
+            #     with torch.no_grad():
+            #         similarity = torch.sum(self._calc_ntk_from_feature(
+            #             z_features, x_val_features) * self.beta.reshape(-1, 1))
+            #         if best_similarity is None or best_similarity < similarity:
+            #             best_similarity = similarity
+            #             best_z = self.z.clone().detach()
+            #             tolerance = 10
 
-        if early_stopping:
-            self.z = best_z
+        # if early_stopping:
+        #     self.z = best_z
+
         with torch.no_grad():
             self.z_features_buffer = self._generate_random_feature(self.z)
 
@@ -234,7 +223,8 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         dataset = TensorDataset(data_X)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        for m, model in enumerate(self.random_models):
+        for m, model in enumerate(self._generate_models(
+                self.kwargs, n_models=8, device=self.device)):
             model.eval()
             curr_features_list = []
             for i, (X,) in enumerate(dataloader):
@@ -351,9 +341,9 @@ class RKMEStatSpecification(BaseStatSpecification):
             rkme_load["device"] = choose_device(rkme_load["cuda_idx"])
             rkme_load["z"] = torch.from_numpy(np.array(rkme_load["z"])).float()
             rkme_load["beta"] = torch.from_numpy(np.array(rkme_load["beta"]))
-            rkme_load["random_models"] = self._generate_models(rkme_load["kwargs"],
-                                                               rkme_load["n_models"],
-                                                               rkme_load["device"])
+            # rkme_load["random_models"] = self._generate_models(rkme_load["kwargs"],
+            #                                                    rkme_load["n_models"],
+            #                                                    rkme_load["device"])
             for d in self.__dir__():
                 if d in rkme_load.keys():
                     setattr(self, d, rkme_load[d])

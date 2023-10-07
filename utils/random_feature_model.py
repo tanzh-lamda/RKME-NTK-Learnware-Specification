@@ -377,8 +377,6 @@ class Linear_wide(nn.Module):
         return out
     
 def build_model(model_type, **args):
-    print(args)
-    # print(*args)
     if model_type == 'linear':
         model = partial(Linear_wide, **args)
     elif model_type == 'conv':
