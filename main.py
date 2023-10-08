@@ -57,7 +57,7 @@ parser.add_argument('--net_depth', type=int, default=3,
 parser.add_argument('--activation', type=str,
                     default='relu', help='activation of random model')
 parser.add_argument('--ntk_steps', type=int,
-                    default=35, help='steps of optimization')
+                    default=45, help='steps of optimization')
 parser.add_argument('--sigma', type=float, default=None, help='standard variance of random models')
 
 args = parser.parse_args()
@@ -72,7 +72,7 @@ CANDIDATES = {
     "net_depth": [3, 3, 4, 4, 5, 5, 6, 6]
 }
 
-AUTO_PARAM = "data_id"
+AUTO_PARAM = "ntk_steps"
 
 # setattr
 def _grid_search_mode():

@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import torch_optimizer
 from learnware.specification import BaseStatSpecification
-from learnware.specification.rkme import solve_qp, choose_device, setup_seed
+from learnware.specification.rkme import solve_qp, choose_device, setup_seed, torch_rbf_kernel
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
 from utils.random_feature_model import build_model
@@ -24,7 +24,7 @@ class RKMEStatSpecification(BaseStatSpecification):
     # 可能需要单例模式，这样也可以leverage一下特征提取能力
     ntk_calculator = None
 
-    def __init__(self, n_models=8, cuda_idx: int = -1, **kwargs):
+    def __init__(self, n_models=8, cuda_idx: int = -1, gamma=0.1, **kwargs):
         self.z = None
         self.beta = None
         self.num_points = 0
@@ -37,6 +37,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         self.n_random_features = kwargs["n_random_features"]
         self.random_models = None
 
+        self.gamma = gamma
         self.z_features_buffer = None
         setup_seed(0)
 
@@ -68,7 +69,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         nonnegative_beta: bool = True,
         reduce: bool = True,
     ):
-        alpha = None
         self.num_points = X.shape[0]
         X_shape = X.shape
         Z_shape = tuple([K] + list(X_shape)[1:])
@@ -98,46 +98,30 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         # Reshape to original dimensions
         X = X.reshape(X_shape)
-        X_train, X_val = None, None
+        # X_train, X_val = None, None
+        X_train = X
 
-        if early_stopping:
-            np.random.shuffle(X)
-            X_train, X_val = np.split(X, [int(len(X) * 0.8)])
-        else:
-            X_train = X
-
+        random_models = list(self._generate_models(
+                self.kwargs, n_models=8, device=self.device))
         self.z = self.z.reshape(Z_shape).to(self.device).float()
         with torch.no_grad():
-            x_features = self._generate_random_feature(X_train)
-        self._update_beta(x_features, nonnegative_beta)
+            x_features = self._generate_random_feature(X_train, random_models=random_models)
+        self._update_beta(x_features, nonnegative_beta, random_models=random_models)
         optimizer = torch_optimizer.AdaBelief([{"params": [self.z]}],
                                               lr=step_size, eps=1e-16)
-        # Alternating optimize Z and beta
-        # best_similarity, tolerance, best_z = None, 1, None
+
         for i in range(steps):
-            # if tolerance <= 0:
-            #     break # Early Stopping
+            # Regenerate Random Models
+            random_models = list(self._generate_models(
+                self.kwargs, n_models=8, device=self.device))
+
             with torch.no_grad():
-                x_features = self._generate_random_feature(X_train)
-            self._update_z(alpha, x_features, optimizer)
-            self._update_beta(x_features, nonnegative_beta)
+                x_features = self._generate_random_feature(X_train, random_models=random_models)
+            self._update_z(x_features, optimizer, random_models=random_models)
+            self._update_beta(x_features, nonnegative_beta, random_models=random_models)
 
-            # if early_stopping:
-            #     tolerance -= 1
-            #     with torch.no_grad():
-            #         similarity = torch.sum(self._calc_ntk_from_feature(
-            #             z_features, x_val_features) * self.beta.reshape(-1, 1))
-            #         if best_similarity is None or best_similarity < similarity:
-            #             best_similarity = similarity
-            #             best_z = self.z.clone().detach()
-            #             tolerance = 10
-
-        # if early_stopping:
-        #     self.z = best_z
-
-        with torch.no_grad():
-            self.z_features_buffer = self._generate_random_feature(self.z)
-
+        # with torch.no_grad():
+        #     self.z_features_buffer = self._generate_random_feature(self.z)
 
     def _init_z_by_faiss(self, X: Union[np.ndarray, torch.tensor], K: int):
         """Intialize Z by faiss clustering.
@@ -157,7 +141,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         self.z = center
 
     @torch.no_grad()
-    def _update_beta(self, x_features: Any, nonnegative_beta: bool = True):
+    def _update_beta(self, x_features: Any, nonnegative_beta: bool = True, random_models=None):
         Z = self.z
         if not torch.is_tensor(Z):
             Z = torch.from_numpy(Z)
@@ -167,8 +151,7 @@ class RKMEStatSpecification(BaseStatSpecification):
             x_features = torch.from_numpy(x_features)
         x_features = x_features.to(self.device)
 
-        z_features = self._generate_random_feature(Z)
-
+        z_features = self._generate_random_feature(Z, random_models=random_models)
         K = self._calc_ntk_from_feature(z_features, z_features).to(self.device)
         C = self._calc_ntk_from_feature(z_features, x_features).to(self.device)
         C = torch.sum(C, dim=1) / x_features.shape[0]
@@ -180,7 +163,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         self.beta = beta
 
-    def _update_z(self, alpha: float, x_features: Any, optimizer):
+    def _update_z(self, x_features: Any, optimizer, random_models=None):
         Z = self.z
         beta = self.beta
 
@@ -201,7 +184,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         z_features = None
         for i in range(3):
-            z_features = self._generate_random_feature(Z)
+            z_features = self._generate_random_feature(Z, random_models=random_models)
             K_z = self._calc_ntk_from_feature(z_features, z_features)
             K_zx = self._calc_ntk_from_feature(x_features, z_features)
             term_1 = torch.sum(K_z * (beta.T @ beta))
@@ -215,7 +198,10 @@ class RKMEStatSpecification(BaseStatSpecification):
         return z_features.detach()
 
 
-    def _generate_random_feature(self, data_X, batch_size=4096) -> torch.Tensor:
+    def _generate_random_feature(self, data_X, batch_size=4096, random_models=None) -> torch.Tensor:
+        # TODO: Remove this
+        # assert random_models is not None
+
         X_features_list = []
         if not torch.is_tensor(data_X):
             data_X = torch.from_numpy(data_X)
@@ -223,7 +209,8 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         dataset = TensorDataset(data_X)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        for m, model in enumerate(self._generate_models(
+        for m, model in enumerate(random_models if random_models else
+                                  self._generate_models(
                 self.kwargs, n_models=8, device=self.device)):
             model.eval()
             curr_features_list = []
@@ -233,26 +220,30 @@ class RKMEStatSpecification(BaseStatSpecification):
             curr_features = torch.cat(curr_features_list, 0)
             X_features_list.append(curr_features)
         X_features = torch.cat(X_features_list, 1)
-        X_features = X_features / sqrt(self.n_models * self.n_random_features)
+        X_features = X_features / torch.sqrt(torch.asarray(self.n_models * self.n_random_features, device=self.device))
 
         RKMEStatSpecification.GENERATE_COUNT += 1
 
         return X_features
 
-    def _inner_prod_with_X(self, X: Any) -> float:
-        beta = self.beta.reshape(1, -1).to(self.device)
-        Z = self.z.to(self.device)
+    def inner_prod(self, Phi2, kernel="rbf") -> float:
+        if kernel == "rbf":
+            return self._inner_prod_rbf(Phi2)
+        elif kernel == "ntk":
+            return self._inner_prod_ntk(Phi2)
+        else:
+            raise NotImplementedError("not Support other kernel")
 
-        if not torch.is_tensor(X):
-            X = torch.from_numpy(X)
-        X = X.to(self.device)
+    def _inner_prod_rbf(self, Phi2) -> float:
+        beta_1 = self.beta.reshape(1, -1).double().to(self.device)
+        beta_2 = Phi2.beta.reshape(1, -1).double().to(self.device)
+        Z1 = self.z.double().reshape(self.z.shape[0], -1).to(self.device)
+        Z2 = Phi2.z.double().reshape(Phi2.z.shape[0], -1).to(self.device)
+        v = torch.sum(torch_rbf_kernel(Z1, Z2, self.gamma) * (beta_1.T @ beta_2))
 
-        v = self._calc_ntk_from_raw(Z, X) * beta.T
-        v = torch.sum(v, dim=0)
+        return float(v)
 
-        return v.detach().cpu().numpy()
-
-    def inner_prod(self, Phi2) -> float:
+    def _inner_prod_ntk(self, Phi2) -> float:
         beta_1 = self.beta.reshape(1, -1).to(self.device)
         beta_2 = Phi2.beta.reshape(1, -1).to(self.device)
         if self.z_features_buffer is None:
@@ -268,12 +259,14 @@ class RKMEStatSpecification(BaseStatSpecification):
         return float(v)
 
     def dist(self, Phi2, omit_term1: bool = False) -> float:
+        inner_product = RKMEStatSpecification._inner_prod_rbf
+        # TODO: 目前，用NTK优化z，用rbf搜索；之后改用neural tagents
         if omit_term1:
             term1 = 0
         else:
-            term1 = self.inner_prod(self)
-        term2 = self.inner_prod(Phi2)
-        term3 = Phi2.inner_prod(Phi2)
+            term1 = inner_product(self, self)
+        term2 = inner_product(self, Phi2)
+        term3 = inner_product(Phi2, Phi2)
 
         return float(term1 - 2 * term2 + term3)
 
@@ -283,7 +276,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return self._calc_ntk_from_feature(x1_feature, x2_feature)
 
-    def _calc_ntk_from_feature(self, x1_feature, x2_feature):
+    def _calc_ntk_from_feature(self, x1_feature: torch.Tensor, x2_feature: torch.Tensor):
         K_12 = x1_feature @ x2_feature.T + 0.01
         return K_12
 

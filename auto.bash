@@ -12,5 +12,6 @@ for num in {0..6}
 do
 # shellcheck disable=SC2086
 nohup python main.py --id ${num} ${param} > "./log/${folder}/auto_${num}.log" 2>&1 &
-echo $! > ./log/save_pid.txt
+echo $! >> "./log/${folder}/.save_pid"
+echo " " >> "./log/${folder}/.save_pid"
 done

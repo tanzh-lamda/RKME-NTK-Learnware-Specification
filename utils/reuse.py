@@ -52,7 +52,8 @@ class AveragingReuser(BaseReuser):
                     mean_pred_y += pred_y
             elif self.mode == "vote":
                 # TODO: 修改learnware包的代码
-                softmax_pred = softmax(pred_y, axis=-1)
+                # softmax_pred = softmax(pred_y, axis=-1)
+                softmax_pred = pred_y
                 if mean_pred_y is None:
                     mean_pred_y = softmax_pred
                 else:
