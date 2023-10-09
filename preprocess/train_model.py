@@ -89,8 +89,8 @@ def models_test(test_X, test_y, model_list, device=None):
 
 def train_model(args):
     device = choose_device(args.cuda_idx)
-    n_uploaders = 50
-    n_users = 50
+    n_uploaders = args.n_uploaders
+    n_users = args.n_users
     n_classes = 10
     dataset = args.data
     data_root = os.path.join("image_models", 'learnware_market_data', "{}_{:d}".format(dataset, args.data_id))

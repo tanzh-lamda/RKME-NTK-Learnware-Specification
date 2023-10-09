@@ -55,7 +55,6 @@ def build_from_preprocessed(args, regenerate=True):
             spec = specification.utils.generate_rkme_spec(X=train_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
             spec = RKMEStatSpecification(**args.__dict__)
-
             spec.generate_stat_spec_from_data(val_X, K=args.K, steps=args.ntk_steps, reduce=True)
         else:
             raise NotImplementedError("Not Support", args.spec)

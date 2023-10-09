@@ -10,7 +10,8 @@ from preprocess.model import ConvModel
 
 
 def cal_best_match(args, k=1):
-    data_root = os.path.join(args.data_root, "learnware_market_data", args.data)
+    data_root = os.path.join(args.data_root, "learnware_market_data",
+                             "{}_{:d}".format(args.data, args.data_id))
 
     with open(os.path.join(data_root, "information.json")) as info_file:
         info = json.load(info_file)
@@ -32,7 +33,8 @@ def cal_best_match(args, k=1):
 
 def best_match_performance(args):
     device = choose_device(args.cuda_idx)
-    data_root = os.path.join(args.data_root, "learnware_market_data", args.data)
+    data_root = os.path.join(args.data_root, "learnware_market_data",
+                             "{}_{:d}".format(args.data, args.data_id))
 
     best_match_by_user = cal_best_match(args, k=args.max_search_num)
 

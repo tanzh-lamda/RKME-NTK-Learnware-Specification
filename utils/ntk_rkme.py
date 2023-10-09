@@ -45,7 +45,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         if RKMEStatSpecification.ntk_fn is None:
             _, _, kernel_fn = kernels.DCConvNetKernel(depth=3, width=1024, num_classes=10)
             kernel_fn = functools.partial(kernel_fn, get='ntk')
-            kernel_fn = nt.batch(kernel_fn, device_count=5, batch_size=10)
+            kernel_fn = nt.batch(kernel_fn, batch_size=6)
             RKMEStatSpecification.ntk_fn = kernel_fn
 
         setup_seed(0)

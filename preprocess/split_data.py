@@ -112,8 +112,11 @@ def generate(args):
     else:
         raise NotImplementedError("No Support for", dataset)
 
-    user_orders_record, user_weights_record = generate_user(test_X, test_y, 3000, USER_WEIGHTS, data_save_root=os.path.join(curr_save_root, 'user'))
-    uploader_orders_record, uploader_weights_record = generate_uploader(train_X, train_y, 12500, 2000, UPLOADER_WEIGHTS, data_save_root=os.path.join(curr_save_root, 'uploader'))
+    user_orders_record, user_weights_record = generate_user(test_X, test_y, 3000, USER_WEIGHTS, n_users=args.n_users,
+                                                            data_save_root=os.path.join(curr_save_root, 'user'))
+    uploader_orders_record, uploader_weights_record = generate_uploader(train_X, train_y, 12500, 2000, UPLOADER_WEIGHTS,
+                                                                        n_uploaders=args.n_uploaders,
+                                                                        data_save_root=os.path.join(curr_save_root, 'uploader'))
 
     with open(os.path.join(curr_save_root, 'information.json'), "w") as f:
         json.dump({

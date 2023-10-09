@@ -13,7 +13,7 @@ file_handler = logging.FileHandler('Grid Search.log')
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
-logger.addHandler(file_handler)
+# logger.addHandler(file_handler)
 logger.addHandler(stdout_handler)
 
 def get_custom_logger():

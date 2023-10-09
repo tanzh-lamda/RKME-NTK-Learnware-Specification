@@ -4,13 +4,20 @@
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate nt
 
-param='--mode auto --n_uploaders 50 --n_users 50 -K 50'
+param='--mode auto --n_uploaders 50 --n_users 50 -K 48 --resplit'
 folder="$(date +%s)"
 mkdir -p "./log/${folder}"
+echo "The output is redirected to log/${folder} with token ${folder}"
 
-for num in {0..6}
+num=7
+if [ $# -eq 1 ]
+  then
+    num=$1
+fi
+
+for ((i=0;i<num;i++))
 do
 # shellcheck disable=SC2086
-nohup python main.py --id ${num} ${param} > "./log/${folder}/auto_${num}.log" 2>&1 &
+nohup python main.py --id ${i} ${param} > "./log/${folder}/auto_${i}.log" 2>&1 &
 echo $! >> "./log/${folder}/.save_pid"
 done

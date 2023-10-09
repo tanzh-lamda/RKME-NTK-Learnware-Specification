@@ -65,7 +65,7 @@ args = parser.parse_args()
 
 CANDIDATES = {
     "model": ['conv', 'resnet'],
-    "ntk_steps": [30, 35, 40, 45, 50, 55, 60],
+    "ntk_steps": [5, 10, 20, 30, 40, 50, 60, 70],
     "sigma": [0.003, 0.004, 0.005, 0.006, 0.01, 0.025, 0.05, 0.1],
     "n_random_features": [32, 64, 96, 128, 196, 256],
     "net_width": [32, 64, 96, 128, 160, 196],
@@ -116,6 +116,7 @@ def _regular_mode():
 
     logger = get_custom_logger()
 
+    logger.info("=" * 45)
     for k, v in args.__dict__.items():
         logger.info("{:<10}:{}".format(k, v))
     logger.info("=" * 45)
@@ -131,7 +132,7 @@ def _auto_mode(search_key):
 
     available_cuda_idx = [1, 2, 3, 4, 5, 6, 7, 0]
 
-    setattr(args, "cuda_idx", available_cuda_idx[args.id % len(available_cuda_idx)])
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(available_cuda_idx[args.id % len(available_cuda_idx)])
     if args.id >= len(CANDIDATES[search_key]):
         return
     setattr(args, search_key, CANDIDATES[search_key][args.id])
@@ -139,16 +140,17 @@ def _auto_mode(search_key):
     if args.resplit:
         _re_split_mode()
 
+    logger.info("=" * 45)
     for k, v in args.__dict__.items():
-        if k in CANDIDATES:
-            logger.info("{:<10}:{}".format(k, v))
+        logger.info("{:<10}:{}".format(k, v))
     logger.info("=" * 45)
     _regular_mode()
 
 
 
 if __name__ == "__main__":
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_idx)
+    args.cuda_idx = 0
 
     if args.mode == "resplit":
         _re_split_mode()
