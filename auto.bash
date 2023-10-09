@@ -2,7 +2,7 @@
 
 # shellcheck disable=SC1090
 source ~/anaconda3/etc/profile.d/conda.sh
-conda activate ntk
+conda activate nt
 
 param='--mode auto --n_uploaders 50 --n_users 50 -K 50'
 folder="$(date +%s)"

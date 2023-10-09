@@ -58,7 +58,7 @@ parser.add_argument('--net_depth', type=int, default=3,
 parser.add_argument('--activation', type=str,
                     default='relu', help='activation of random model')
 parser.add_argument('--ntk_steps', type=int,
-                    default=45, help='steps of optimization')
+                    default=40, help='steps of optimization')
 parser.add_argument('--sigma', type=float, default=None, help='standard variance of random models')
 
 args = parser.parse_args()
