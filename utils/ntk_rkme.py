@@ -1,11 +1,13 @@
 import codecs
 import copy
+import functools
 import json
 import os
 from math import sqrt
 from typing import Any, Union
 
 import faiss
+import jax
 import learnware
 import numpy as np
 import torch
@@ -14,15 +16,15 @@ from learnware.specification import BaseStatSpecification
 from learnware.specification.rkme import solve_qp, choose_device, setup_seed, torch_rbf_kernel
 from torch.utils.data import TensorDataset, DataLoader, random_split
 
+import neural_tangents as nt
+
+from utils import kernels
 from utils.random_feature_model import build_model
-
-
 
 class RKMEStatSpecification(BaseStatSpecification):
     GENERATE_COUNT = 0
-    # Lazy Mode
-    # 可能需要单例模式，这样也可以leverage一下特征提取能力
-    ntk_calculator = None
+    # greedy Mode
+    ntk_fn = None
 
     def __init__(self, n_models=8, cuda_idx: int = -1, gamma=0.1, **kwargs):
         self.z = None
@@ -39,6 +41,13 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         self.gamma = gamma
         self.z_features_buffer = None
+
+        if RKMEStatSpecification.ntk_fn is None:
+            _, _, kernel_fn = kernels.DCConvNetKernel(depth=3, width=1024, num_classes=10)
+            kernel_fn = functools.partial(kernel_fn, get='ntk')
+            kernel_fn = nt.batch(kernel_fn, device_count=5, batch_size=10)
+            RKMEStatSpecification.ntk_fn = kernel_fn
+
         setup_seed(0)
 
     @classmethod
@@ -226,7 +235,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return X_features
 
-    def inner_prod(self, Phi2, kernel="rbf") -> float:
+    def inner_prod(self, Phi2, kernel="ntk") -> float:
         if kernel == "rbf":
             return self._inner_prod_rbf(Phi2)
         elif kernel == "ntk":
@@ -243,7 +252,7 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return float(v)
 
-    def _inner_prod_ntk(self, Phi2) -> float:
+    def _inner_prod_ntk_approx(self, Phi2) -> float:
         beta_1 = self.beta.reshape(1, -1).to(self.device)
         beta_2 = Phi2.beta.reshape(1, -1).to(self.device)
         if self.z_features_buffer is None:
@@ -258,8 +267,23 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return float(v)
 
+    def _inner_prod_ntk(self, Phi2) -> float:
+        beta_1 = self.beta.reshape(1, -1).detach().cpu().numpy()
+        beta_2 = Phi2.beta.reshape(1, -1).detach().cpu().numpy()
+
+        Z1 = self.z.double().detach().cpu().numpy()
+        Z2 = Phi2.z.double().detach().cpu().numpy()
+        Z1, Z2 = np.transpose(Z1, [0,2,3,1]), np.transpose(Z2, [0,2,3,1])
+
+        kernel_fn = RKMEStatSpecification.ntk_fn
+
+        K_zz = kernel_fn(Z1, Z2)
+        v = np.sum(K_zz * (beta_1.T @ beta_2))
+
+        return v.item()
+
     def dist(self, Phi2, omit_term1: bool = False) -> float:
-        inner_product = RKMEStatSpecification._inner_prod_rbf
+        inner_product = RKMEStatSpecification._inner_prod_ntk
         # TODO: 目前，用NTK优化z，用rbf搜索；之后改用neural tagents
         if omit_term1:
             term1 = 0
@@ -270,11 +294,11 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return float(term1 - 2 * term2 + term3)
 
-    def _calc_ntk_from_raw(self, x1, x2, batch_size=4096):
-        x1_feature = self._generate_random_feature(x1, batch_size=batch_size)
-        x2_feature = self._generate_random_feature(x2, batch_size=batch_size)
-
-        return self._calc_ntk_from_feature(x1_feature, x2_feature)
+    # def _calc_ntk_from_raw(self, x1, x2, batch_size=4096):
+    #     x1_feature = self._generate_random_feature(x1, batch_size=batch_size)
+    #     x2_feature = self._generate_random_feature(x2, batch_size=batch_size)
+    #
+    #     return self._calc_ntk_from_feature(x1_feature, x2_feature)
 
     def _calc_ntk_from_feature(self, x1_feature: torch.Tensor, x2_feature: torch.Tensor):
         K_12 = x1_feature @ x2_feature.T + 0.01
@@ -287,13 +311,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         raise NotImplementedError()
 
     def save(self, filepath: str):
-        """Save the computed RKME specification to a specified path in JSON format.
-
-        Parameters
-        ----------
-        filepath : str
-            The specified saving path.
-        """
         save_path = filepath
         rkme_to_save = copy.deepcopy(self.__dict__)
         if torch.is_tensor(rkme_to_save["z"]):
@@ -313,18 +330,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         )
 
     def load(self, filepath: str) -> bool:
-        """Load a RKME specification file in JSON format from the specified path.
-
-        Parameters
-        ----------
-        filepath : str
-            The specified loading path.
-
-        Returns
-        -------
-        bool
-            True if the RKME is loaded successfully.
-        """
         # Load JSON file:
         load_path = filepath
         if os.path.exists(load_path):

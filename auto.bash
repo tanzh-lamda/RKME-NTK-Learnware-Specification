@@ -2,7 +2,7 @@
 
 # shellcheck disable=SC1090
 source ~/anaconda3/etc/profile.d/conda.sh
-conda activate learnware_remote
+conda activate ntk
 
 param='--mode auto --n_uploaders 50 --n_users 50 -K 50'
 folder="$(date +%s)"
@@ -13,5 +13,4 @@ do
 # shellcheck disable=SC2086
 nohup python main.py --id ${num} ${param} > "./log/${folder}/auto_${num}.log" 2>&1 &
 echo $! >> "./log/${folder}/.save_pid"
-echo " " >> "./log/${folder}/.save_pid"
 done

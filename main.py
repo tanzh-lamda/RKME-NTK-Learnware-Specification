@@ -1,6 +1,7 @@
 import argparse
 import copy
 import logging
+import os
 
 from learnware.market import easy
 import torch.multiprocessing as mp
@@ -72,7 +73,7 @@ CANDIDATES = {
     "net_depth": [3, 3, 4, 4, 5, 5, 6, 6]
 }
 
-AUTO_PARAM = "ntk_steps"
+AUTO_PARAM = "data_id"
 
 # setattr
 def _grid_search_mode():
@@ -147,7 +148,7 @@ def _auto_mode(search_key):
 
 
 if __name__ == "__main__":
-    # 我高度建议你使用auto模式搜索参数
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 
     if args.mode == "resplit":
         _re_split_mode()
