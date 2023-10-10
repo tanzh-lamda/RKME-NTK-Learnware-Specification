@@ -41,5 +41,5 @@ class Clerk:
         return "\n".join([
             "Best Accuracy {:.5f}({:.3f})".format(np.mean(best_acc), np.std(best_acc)),
             "RKME Accuracy {:.5f}({:.3f})".format(np.mean(rkme_acc), np.std(rkme_acc)),
-            "Pearson {:5.f}".format(np.corrcoef(np.stack([best_acc, rkme_acc])))
+            "Pearson {:.5f}".format(np.corrcoef(np.stack([best_acc, rkme_acc]))[0, 1])
         ])

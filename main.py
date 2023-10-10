@@ -17,7 +17,8 @@ from utils.clerk import get_custom_logger, Clerk
 
 parser = argparse.ArgumentParser(description='NTK-RF Experiments Remake')
 
-parser.add_argument('--mode', type=str, default="regular", required=False)
+parser.add_argument('--mode', type=str, default="regular")
+parser.add_argument('--token', default=None, help='Used for auto.bash')
 
 # train
 parser.add_argument('--cuda_idx', type=int, default=0,
@@ -65,11 +66,11 @@ args = parser.parse_args()
 
 CANDIDATES = {
     "model": ['conv', 'resnet'],
-    "ntk_steps": [5, 10, 20, 30, 40, 50, 60, 70],
+    "ntk_steps": [5, 25, 45, 65, 75, 85, 100, 120],
     "sigma": [0.003, 0.004, 0.005, 0.006, 0.01, 0.025, 0.05, 0.1],
     "n_random_features": [32, 64, 96, 128, 196, 256],
     "net_width": [32, 64, 96, 128, 160, 196],
-    "data_id": [0, 1, 2, 3, 4, 5, 6, 7],
+    "data_id": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     "net_depth": [3, 3, 4, 4, 5, 5, 6, 6]
 }
 
@@ -109,20 +110,17 @@ def _auto_mode(search_key, clerk=None):
         return
     setattr(args, search_key, CANDIDATES[search_key][args.id])
 
-    if args.resplit:
-        _re_split_mode()
-
     logger.info("=" * 45)
     for k, v in args.__dict__.items():
         logger.info("{:<10}:{}".format(k, v))
     logger.info("=" * 45)
 
-    if search_key == "data_id": # Evaluate Mode
-        best_match_performance(args, clerk=clerk)
 
     _regular_mode(clerk=clerk)
+    best_match_performance(args, clerk=clerk)
 
     print(clerk)
+    print(ntk_rkme.RKMEStatSpecification.INNER_PRODUCT_COUNT)
 
 
 if __name__ == "__main__":

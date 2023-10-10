@@ -284,6 +284,8 @@ class RKMEStatSpecification(BaseStatSpecification):
         K_zz = kernel_fn(Z1, Z2)
         v = np.sum(K_zz * (beta_1.T @ beta_2)).item()
 
+        RKMEStatSpecification.INNER_PRODUCT_COUNT += 1
+
         if self.rkme_id is not None and Phi2.rkme_id is not None:
             RKMEStatSpecification.inner_product_buffer[(self.rkme_id, Phi2.rkme_id)] = v
             RKMEStatSpecification.inner_product_buffer[(Phi2.rkme_id, self.rkme_id)] = v

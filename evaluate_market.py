@@ -43,7 +43,7 @@ def evaluate_market_performance(args, easy_market, clerk: Clerk=None) -> Dict:
         if clerk:
             clerk.rkme_performance(curr_acc)
 
-        logger.debug("Accuracy for user {:d} with {} kernel: {:.3f}".format(i, args.spec, curr_acc))
+        logger.debug("Accuracy for user {:d}: {:.3f}; {:.3f} on average up to now.".format(i, curr_acc, np.mean(acc)))
 
     logger.info("Accuracy {:.3f}({:.3f})".format(np.mean(acc), np.std(acc)))
 
