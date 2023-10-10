@@ -1,6 +1,8 @@
 import sys
 import logging
 
+import numpy as np
+
 logger = logging.getLogger("ntk-experiment")
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
@@ -23,15 +25,21 @@ def get_custom_logger():
 class Clerk:
 
     def __init__(self):
-        self.phrases = []
+        self.best = []
+        self.rkme = []
 
-    def phrase(self, performances):
-        self.phrases.append(
-            performances
-        )
+    def best_performance(self, accuracy):
+        self.best.append(accuracy)
 
-    def latest_best_case(self):
-        if len(self.phrases) == 0:
-            raise KeyError("No Phrase at now")
+    def rkme_performance(self, accuracy):
+        self.rkme.append(accuracy)
 
-        return max(self.phrases[-1], key=lambda p: p["Accuracy"]["Mean"])
+    def __str__(self):
+        best_acc = np.asarray(self.best)
+        rkme_acc = np.asarray(self.rkme)
+
+        return "\n".join([
+            "Best Accuracy {:.5f}({:.3f})".format(np.mean(best_acc), np.std(best_acc)),
+            "RKME Accuracy {:.5f}({:.3f})".format(np.mean(rkme_acc), np.std(rkme_acc)),
+            "Pearson {:5.f}".format(np.corrcoef(np.stack([best_acc, rkme_acc])))
+        ])

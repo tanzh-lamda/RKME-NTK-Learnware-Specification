@@ -22,17 +22,19 @@ from utils import kernels
 from utils.random_feature_model import build_model
 
 class RKMEStatSpecification(BaseStatSpecification):
-    GENERATE_COUNT = 0
+    INNER_PRODUCT_COUNT = 0
     # greedy Mode
     ntk_fn = None
+    inner_product_buffer = dict()
 
-    def __init__(self, n_models=8, cuda_idx: int = -1, gamma=0.1, **kwargs):
+    def __init__(self, n_models=8, cuda_idx: int = -1, gamma=0.1, rkme_id=None, **kwargs):
         self.z = None
         self.beta = None
         self.num_points = 0
         self.cuda_idx = cuda_idx
         torch.cuda.empty_cache()
         self.device = choose_device(cuda_idx=cuda_idx)
+        self.rkme_id = rkme_id
 
         self.n_models = n_models
         self.kwargs = kwargs
@@ -231,8 +233,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         X_features = torch.cat(X_features_list, 1)
         X_features = X_features / torch.sqrt(torch.asarray(self.n_models * self.n_random_features, device=self.device))
 
-        RKMEStatSpecification.GENERATE_COUNT += 1
-
         return X_features
 
     def inner_prod(self, Phi2, kernel="ntk") -> float:
@@ -252,22 +252,26 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return float(v)
 
-    def _inner_prod_ntk_approx(self, Phi2) -> float:
-        beta_1 = self.beta.reshape(1, -1).to(self.device)
-        beta_2 = Phi2.beta.reshape(1, -1).to(self.device)
-        if self.z_features_buffer is None:
-            Z1 = self.z.to(self.device)
-            self.z_features_buffer = self._generate_random_feature(Z1)
-        if Phi2.z_features_buffer is None:
-            Z2 = Phi2.z.to(self.device)
-            Phi2.z_features_buffer = Phi2._generate_random_feature(Z2)
-
-        v = torch.sum(self._calc_ntk_from_feature(
-            self.z_features_buffer, Phi2.z_features_buffer) * (beta_1.T @ beta_2))
-
-        return float(v)
+    # def _inner_prod_ntk_approx(self, Phi2) -> float:
+    #     beta_1 = self.beta.reshape(1, -1).to(self.device)
+    #     beta_2 = Phi2.beta.reshape(1, -1).to(self.device)
+    #     if self.z_features_buffer is None:
+    #         Z1 = self.z.to(self.device)
+    #         self.z_features_buffer = self._generate_random_feature(Z1)
+    #     if Phi2.z_features_buffer is None:
+    #         Z2 = Phi2.z.to(self.device)
+    #         Phi2.z_features_buffer = Phi2._generate_random_feature(Z2)
+    #
+    #     v = torch.sum(self._calc_ntk_from_feature(
+    #         self.z_features_buffer, Phi2.z_features_buffer) * (beta_1.T @ beta_2))
+    #
+    #     return float(v)
 
     def _inner_prod_ntk(self, Phi2) -> float:
+        if self.rkme_id is not None and Phi2.rkme_id is not None:
+            if (self.rkme_id, Phi2.rkme_id) in RKMEStatSpecification.inner_product_buffer:
+                return RKMEStatSpecification.inner_product_buffer[(self.rkme_id, Phi2.rkme_id)]
+
         beta_1 = self.beta.reshape(1, -1).detach().cpu().numpy()
         beta_2 = Phi2.beta.reshape(1, -1).detach().cpu().numpy()
 
@@ -278,9 +282,12 @@ class RKMEStatSpecification(BaseStatSpecification):
         kernel_fn = RKMEStatSpecification.ntk_fn
 
         K_zz = kernel_fn(Z1, Z2)
-        v = np.sum(K_zz * (beta_1.T @ beta_2))
+        v = np.sum(K_zz * (beta_1.T @ beta_2)).item()
 
-        return v.item()
+        if self.rkme_id is not None and Phi2.rkme_id is not None:
+            RKMEStatSpecification.inner_product_buffer[(self.rkme_id, Phi2.rkme_id)] = v
+            RKMEStatSpecification.inner_product_buffer[(Phi2.rkme_id, self.rkme_id)] = v
+        return v
 
     def dist(self, Phi2, omit_term1: bool = False) -> float:
         inner_product = RKMEStatSpecification._inner_prod_ntk

@@ -7,6 +7,7 @@ from learnware.specification.rkme import choose_device
 
 from preprocess.dataloader import ImageDataLoader
 from preprocess.model import ConvModel
+from utils.clerk import Clerk
 
 
 def cal_best_match(args, k=1):
@@ -31,7 +32,7 @@ def cal_best_match(args, k=1):
 
     return best_match
 
-def best_match_performance(args):
+def best_match_performance(args, clerk: Clerk=None):
     device = choose_device(args.cuda_idx)
     data_root = os.path.join(args.data_root, "learnware_market_data",
                              "{}_{:d}".format(args.data, args.data_id))
@@ -60,6 +61,9 @@ def best_match_performance(args):
 
         curr_acc = np.mean((predict_y == test_y).cpu().detach().numpy())
         acc.append(curr_acc)
-        print("Accuracy for user {:d} with best match: {:.2f}".format(i, curr_acc))
+        if clerk:
+            clerk.best_performance(curr_acc)
+        else:
+            print("Accuracy for user {:d} with best match: {:.2f}".format(i, curr_acc))
 
     print("Accuracy: {:.2f} ({:.2f})".format(np.mean(acc), np.std(acc)))

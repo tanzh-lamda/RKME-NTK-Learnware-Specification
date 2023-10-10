@@ -54,7 +54,7 @@ def build_from_preprocessed(args, regenerate=True):
         if args.spec == "rbf":
             spec = specification.utils.generate_rkme_spec(X=train_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
-            spec = RKMEStatSpecification(**args.__dict__)
+            spec = RKMEStatSpecification(rkme_id=i, **args.__dict__)
             spec.generate_stat_spec_from_data(val_X, K=args.K, steps=args.ntk_steps, reduce=True)
         else:
             raise NotImplementedError("Not Support", args.spec)
@@ -76,7 +76,7 @@ def build_from_preprocessed(args, regenerate=True):
 
             yaml_content["model"]["kwargs"]["device"] = str(choose_device(args.cuda_idx))
             if args.spec == "ntk":
-                yaml_content["stat_specifications"][0]["kwargs"] = args.__dict__
+                yaml_content["stat_specifications"][0]["kwargs"] = copy.deepcopy(args.__dict__)
 
             yaml.dump(yaml_content, yaml_target)
 

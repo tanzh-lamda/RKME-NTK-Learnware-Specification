@@ -4,12 +4,12 @@
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate nt
 
-param='--mode auto --n_uploaders 50 --n_users 50 -K 48 --resplit'
+param='--mode auto --n_uploaders 50 --n_users 50 -K 48'
 folder="$(date +%s)"
 mkdir -p "./log/${folder}"
 echo "The output is redirected to log/${folder} with token ${folder}"
 
-num=7
+num=8
 if [ $# -eq 1 ]
   then
     num=$1

@@ -73,38 +73,10 @@ CANDIDATES = {
     "net_depth": [3, 3, 4, 4, 5, 5, 6, 6]
 }
 
-AUTO_PARAM = "data_id"
-
-# setattr
-def _grid_search_mode():
-    mp.set_start_method("spawn")
-    logger = get_custom_logger()
-    clerk = Clerk()
-
-    available_cuda_idx = [1, 2, 3, 4, 5, 6, 7]
-    available_id = [1, 2, 3, 4, 5, 6, 7]
-
-    for key, vals in CANDIDATES.items():
-        args_list = []
-        for i, val in enumerate(vals):
-            buffer = copy.deepcopy(args)
-            setattr(buffer, key, val)
-            setattr(buffer, "cuda_idx", available_cuda_idx[i])
-            setattr(buffer, "id", available_id[i])
-            args_list.append(buffer)
-
-        mps = MultiProcessSearcher(args_list, clerk)
-        mps.dispatch()
-
-        best_case = clerk.latest_best_case()
-        logger.info("Best {} is {} with Accuracy {:.3f}({:.3f})".format(
-            key, best_case["Args"][key], best_case["Accuracy"]["Mean"], best_case["Accuracy"]["Std"]
-        ))
-    # TODO: 细致处理一下Logger的记录
-    # TODO: Clerk类记录精度，有利于网格搜索
+AUTO_PARAM = "ntk_steps"
 
 
-def _regular_mode():
+def _regular_mode(clerk=None):
     easy.logger.setLevel(logging.WARNING)
 
     if args.resplit:
@@ -112,7 +84,7 @@ def _regular_mode():
 
     learnware_list = build_from_preprocessed(args, regenerate=True)
     market = upload_to_easy_market(args, learnware_list)
-    evaluate_market_performance(args, market)
+    evaluate_market_performance(args, market, clerk=clerk)
 
     logger = get_custom_logger()
 
@@ -127,7 +99,7 @@ def _re_split_mode():
     train_model(args)
     best_match_performance(args)
 
-def _auto_mode(search_key):
+def _auto_mode(search_key, clerk=None):
     logger = get_custom_logger()
 
     available_cuda_idx = [1, 2, 3, 4, 5, 6, 7, 0]
@@ -144,8 +116,13 @@ def _auto_mode(search_key):
     for k, v in args.__dict__.items():
         logger.info("{:<10}:{}".format(k, v))
     logger.info("=" * 45)
-    _regular_mode()
 
+    if search_key == "data_id": # Evaluate Mode
+        best_match_performance(args, clerk=clerk)
+
+    _regular_mode(clerk=clerk)
+
+    print(clerk)
 
 
 if __name__ == "__main__":
@@ -154,12 +131,11 @@ if __name__ == "__main__":
 
     if args.mode == "resplit":
         _re_split_mode()
-    elif args.mode == "grid":
-        _grid_search_mode()
     elif args.mode == "regular":
         _regular_mode()
     elif args.mode == "auto":
-        _auto_mode(AUTO_PARAM)
+        performance_clerk = Clerk()
+        _auto_mode(AUTO_PARAM, clerk=performance_clerk)
     else:
         raise NotImplementedError()
 

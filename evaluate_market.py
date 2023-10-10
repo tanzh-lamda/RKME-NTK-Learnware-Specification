@@ -16,7 +16,7 @@ from utils.ntk_rkme import RKMEStatSpecification
 from utils.reuse import AveragingReuser
 
 
-def evaluate_market_performance(args, easy_market) -> Dict:
+def evaluate_market_performance(args, easy_market, clerk: Clerk=None) -> Dict:
     logger = get_custom_logger()
 
     data_root = os.path.join(args.data_root, 'learnware_market_data', "{}_{:d}".format(args.data, args.data_id))
@@ -26,7 +26,7 @@ def evaluate_market_performance(args, easy_market) -> Dict:
         if args.spec == "rbf":
             stat_spec = specification.utils.generate_rkme_spec(X=test_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
         elif args.spec == "ntk":
-            stat_spec = RKMEStatSpecification(n_models=8, **args.__dict__)
+            stat_spec = RKMEStatSpecification(n_models=8, rkme_id=i+args.n_uploaders, **args.__dict__)
             stat_spec.generate_stat_spec_from_data(test_X, reduce=True, steps=args.ntk_steps, K=args.K)
         else:
             raise NotImplementedError()
@@ -40,6 +40,9 @@ def evaluate_market_performance(args, easy_market) -> Dict:
 
         curr_acc = np.mean(ensemble_predict_y == test_y)
         acc.append(curr_acc)
+        if clerk:
+            clerk.rkme_performance(curr_acc)
+
         logger.debug("Accuracy for user {:d} with {} kernel: {:.3f}".format(i, args.spec, curr_acc))
 
     logger.info("Accuracy {:.3f}({:.3f})".format(np.mean(acc), np.std(acc)))
