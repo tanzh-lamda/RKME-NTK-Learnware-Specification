@@ -17,8 +17,8 @@ def cal_best_match(args, k=1):
     with open(os.path.join(data_root, "information.json")) as info_file:
         info = json.load(info_file)
 
-    user_weights_record = info["user_weights_record"]
-    uploader_weights_record = info["uploader_weights_record"]
+    user_weights_record = info["user_weights_record"][:args.n_users]
+    uploader_weights_record = info["uploader_weights_record"][:args.n_uploaders]
 
     similarities = [[np.sum(np.minimum(np.asarray(user_weight), np.asarray(uploader_weight)))
                   for uploader_weight in uploader_weights_record]
@@ -66,4 +66,5 @@ def best_match_performance(args, clerk: Clerk=None):
         else:
             print("Accuracy for user {:d} with best match: {:.2f}".format(i, curr_acc))
 
-    print("Accuracy: {:.2f} ({:.2f})".format(np.mean(acc), np.std(acc)))
+    if clerk is None:
+        print("Accuracy: {:.2f} ({:.2f})".format(np.mean(acc), np.std(acc)))

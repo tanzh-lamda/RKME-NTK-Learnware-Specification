@@ -11,9 +11,9 @@ stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.DEBUG)
 stdout_handler.setFormatter(formatter)
 
-file_handler = logging.FileHandler('Grid Search.log')
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(formatter)
+# file_handler = logging.FileHandler('Grid Search.log')
+# file_handler.setLevel(logging.INFO)
+# file_handler.setFormatter(formatter)
 
 # logger.addHandler(file_handler)
 logger.addHandler(stdout_handler)
@@ -37,6 +37,9 @@ class Clerk:
     def __str__(self):
         best_acc = np.asarray(self.best)
         rkme_acc = np.asarray(self.rkme)
+
+        if len(self.best) == 0 or len(self.rkme) == 0:
+            return ""
 
         return "\n".join([
             "Best Accuracy {:.5f}({:.3f})".format(np.mean(best_acc), np.std(best_acc)),

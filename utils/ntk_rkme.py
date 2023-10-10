@@ -27,7 +27,7 @@ class RKMEStatSpecification(BaseStatSpecification):
     ntk_fn = None
     inner_product_buffer = dict()
 
-    def __init__(self, n_models=8, cuda_idx: int = -1, gamma=0.1, rkme_id=None, **kwargs):
+    def __init__(self, n_models=16, cuda_idx: int = -1, gamma=0.1, rkme_id=None, **kwargs):
         self.z = None
         self.beta = None
         self.num_points = 0
@@ -109,11 +109,10 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         # Reshape to original dimensions
         X = X.reshape(X_shape)
-        # X_train, X_val = None, None
         X_train = X
 
         random_models = list(self._generate_models(
-                self.kwargs, n_models=8, device=self.device))
+                self.kwargs, n_models=self.n_models, device=self.device))
         self.z = self.z.reshape(Z_shape).to(self.device).float()
         with torch.no_grad():
             x_features = self._generate_random_feature(X_train, random_models=random_models)
@@ -124,26 +123,14 @@ class RKMEStatSpecification(BaseStatSpecification):
         for i in range(steps):
             # Regenerate Random Models
             random_models = list(self._generate_models(
-                self.kwargs, n_models=8, device=self.device))
+                self.kwargs, n_models=self.n_models, device=self.device))
 
             with torch.no_grad():
                 x_features = self._generate_random_feature(X_train, random_models=random_models)
             self._update_z(x_features, optimizer, random_models=random_models)
             self._update_beta(x_features, nonnegative_beta, random_models=random_models)
 
-        # with torch.no_grad():
-        #     self.z_features_buffer = self._generate_random_feature(self.z)
-
     def _init_z_by_faiss(self, X: Union[np.ndarray, torch.tensor], K: int):
-        """Intialize Z by faiss clustering.
-
-        Parameters
-        ----------
-        X : np.ndarray or torch.tensor
-            Raw data in np.ndarray format or torch.tensor format.
-        K : int
-            Size of the construced reduced set.
-        """
         X = X.astype("float32")
         numDim = X.shape[1]
         kmeans = faiss.Kmeans(numDim, K, niter=100, verbose=False)
@@ -222,7 +209,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         for m, model in enumerate(random_models if random_models else
                                   self._generate_models(
-                self.kwargs, n_models=8, device=self.device)):
+                self.kwargs, n_models=self.n_models, device=self.device)):
             model.eval()
             curr_features_list = []
             for i, (X,) in enumerate(dataloader):
@@ -237,35 +224,12 @@ class RKMEStatSpecification(BaseStatSpecification):
 
     def inner_prod(self, Phi2, kernel="ntk") -> float:
         if kernel == "rbf":
-            return self._inner_prod_rbf(Phi2)
+            raise NotImplementedError("not Support other kernel")
+            # return self._inner_prod_rbf(Phi2)
         elif kernel == "ntk":
             return self._inner_prod_ntk(Phi2)
         else:
             raise NotImplementedError("not Support other kernel")
-
-    def _inner_prod_rbf(self, Phi2) -> float:
-        beta_1 = self.beta.reshape(1, -1).double().to(self.device)
-        beta_2 = Phi2.beta.reshape(1, -1).double().to(self.device)
-        Z1 = self.z.double().reshape(self.z.shape[0], -1).to(self.device)
-        Z2 = Phi2.z.double().reshape(Phi2.z.shape[0], -1).to(self.device)
-        v = torch.sum(torch_rbf_kernel(Z1, Z2, self.gamma) * (beta_1.T @ beta_2))
-
-        return float(v)
-
-    # def _inner_prod_ntk_approx(self, Phi2) -> float:
-    #     beta_1 = self.beta.reshape(1, -1).to(self.device)
-    #     beta_2 = Phi2.beta.reshape(1, -1).to(self.device)
-    #     if self.z_features_buffer is None:
-    #         Z1 = self.z.to(self.device)
-    #         self.z_features_buffer = self._generate_random_feature(Z1)
-    #     if Phi2.z_features_buffer is None:
-    #         Z2 = Phi2.z.to(self.device)
-    #         Phi2.z_features_buffer = Phi2._generate_random_feature(Z2)
-    #
-    #     v = torch.sum(self._calc_ntk_from_feature(
-    #         self.z_features_buffer, Phi2.z_features_buffer) * (beta_1.T @ beta_2))
-    #
-    #     return float(v)
 
     def _inner_prod_ntk(self, Phi2) -> float:
         if self.rkme_id is not None and Phi2.rkme_id is not None:
@@ -292,8 +256,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         return v
 
     def dist(self, Phi2, omit_term1: bool = False) -> float:
-        inner_product = RKMEStatSpecification._inner_prod_ntk
-        # TODO: 目前，用NTK优化z，用rbf搜索；之后改用neural tagents
+        inner_product = RKMEStatSpecification.inner_prod
         if omit_term1:
             term1 = 0
         else:
@@ -302,12 +265,6 @@ class RKMEStatSpecification(BaseStatSpecification):
         term3 = inner_product(Phi2, Phi2)
 
         return float(term1 - 2 * term2 + term3)
-
-    # def _calc_ntk_from_raw(self, x1, x2, batch_size=4096):
-    #     x1_feature = self._generate_random_feature(x1, batch_size=batch_size)
-    #     x2_feature = self._generate_random_feature(x2, batch_size=batch_size)
-    #
-    #     return self._calc_ntk_from_feature(x1_feature, x2_feature)
 
     def _calc_ntk_from_feature(self, x1_feature: torch.Tensor, x2_feature: torch.Tensor):
         K_12 = x1_feature @ x2_feature.T + 0.01
@@ -348,9 +305,7 @@ class RKMEStatSpecification(BaseStatSpecification):
             rkme_load["device"] = choose_device(rkme_load["cuda_idx"])
             rkme_load["z"] = torch.from_numpy(np.array(rkme_load["z"])).float()
             rkme_load["beta"] = torch.from_numpy(np.array(rkme_load["beta"]))
-            # rkme_load["random_models"] = self._generate_models(rkme_load["kwargs"],
-            #                                                    rkme_load["n_models"],
-            #                                                    rkme_load["device"])
+
             for d in self.__dir__():
                 if d in rkme_load.keys():
                     setattr(self, d, rkme_load[d])

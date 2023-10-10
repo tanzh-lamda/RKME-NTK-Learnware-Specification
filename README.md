@@ -54,7 +54,7 @@
 --mode auto --id 7 --n_uploaders 50 --n_users 50 -K 50
 ```
 
-这些候选参数的设置，被记录在在main.py中的**CANDIDATES**和**AUTO_PARAM**中，其中，AUTO_PARAM是要搜索的参数。特别需要说明的是，候选参数中data_id较为特殊。使用该参数时，不同的程序会使用相同的参数上，在不同的抽样上开展实验，这可以用于**评估实验精度**。
+这些候选参数的设置，被记录在在main.py中的**CANDIDATES**和**auto_param**中，其中，--auto_param是要搜索的参数。特别需要说明的是，候选参数中data_id较为特殊。使用该参数时，不同的程序会使用相同的参数上，在不同的抽样上开展实验，这可以用于**评估实验精度**。
 
 ```python
 CANDIDATES = {
@@ -66,8 +66,6 @@ CANDIDATES = {
     "data_id": [0, 1, 2, 3, 4, 5, 6, 7],
     "net_depth": [3, 3, 4, 4, 5, 5, 6, 6]
 }
-
-AUTO_PARAM = "data_id"
 ```
 
 ## 参数设置

@@ -1,5 +1,4 @@
 import copy
-import logging
 import os
 import zipfile
 from shutil import copyfile, rmtree
@@ -14,6 +13,7 @@ from learnware.specification.rkme import choose_device
 
 from preprocess.dataloader import ImageDataLoader
 from utils.clerk import get_custom_logger
+from utils.market import DummyMarket
 from utils.ntk_rkme import RKMEStatSpecification
 
 user_semantic = {
@@ -100,7 +100,7 @@ def build_from_preprocessed(args, regenerate=True):
 def upload_to_easy_market(args, zip_path_list):
     learnware.init()
     np.random.seed(2023)
-    easy_market = EasyMarket(market_id="NTK-RF-{:d}".format(args.id), rebuild=True)
+    market = DummyMarket(market_id="NTK-RF-{:d}".format(args.id), rebuild=True)
 
     for idx, zip_path in enumerate(zip_path_list):
         semantic_spec = copy.deepcopy(user_semantic)
@@ -108,9 +108,9 @@ def upload_to_easy_market(args, zip_path_list):
         semantic_spec["Description"]["Values"] = "test_learnware_number_{:d}".format(idx)
         semantic_spec["Scenario"]["Values"] = [args.data]
         semantic_spec["Output"]['Dimension'] = 10
-        easy_market.add_learnware(zip_path, semantic_spec)
+        market.add_learnware(zip_path, semantic_spec)
 
     logger = get_custom_logger()
-    logger.debug("Total Item: {:d}".format(len(easy_market)))
+    logger.debug("Total Item: {:d}".format(len(market)))
 
-    return easy_market
+    return market
