@@ -47,7 +47,7 @@ parser.add_argument('--data_root', type=str, default=r"image_models",
                     help='The path of images and models')
 parser.add_argument('--n_uploaders', type=int, default=50, help='Number of uploaders')
 parser.add_argument('--n_users', type=int, default=50, help='Number of users')
-parser.add_argument('--data_id', type=int, default=0, help='market data id')
+parser.add_argument('--data_id', type=int, default=6, help='market data id')
 
 #ntk
 parser.add_argument('--model', type=str,
@@ -63,7 +63,7 @@ parser.add_argument('--net_depth', type=int, default=3,
 parser.add_argument('--activation', type=str,
                     default='relu', help='activation of random model')
 parser.add_argument('--ntk_steps', type=int,
-                    default=40, help='steps of optimization')
+                    default=80, help='steps of optimization')
 parser.add_argument('--sigma', type=float, default=None, help='standard variance of random models')
 
 args = parser.parse_args()
@@ -122,8 +122,8 @@ def _auto_mode(search_key, clerk=None):
 
 
 if __name__ == "__main__":
-    # os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_idx) TODO:改
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3,4"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_idx)
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3,4"
     args.cuda_idx = 0
 
     performance_clerk = Clerk()

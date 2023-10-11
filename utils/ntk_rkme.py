@@ -105,15 +105,17 @@ class RKMEStatSpecification(BaseStatSpecification):
             return
 
         # Initialize Z by clustering, utiliing faiss to speed up the process.
-        self._init_z_by_faiss(X, K)
-
+        # self._init_z_by_faiss(X, K)
         # Reshape to original dimensions
         X = X.reshape(X_shape)
         X_train = X
 
         random_models = list(self._generate_models(
                 self.kwargs, n_models=self.n_models, device=self.device))
-        self.z = self.z.reshape(Z_shape).to(self.device).float()
+        # self.z = self.z.reshape(Z_shape).to(self.device).float()
+
+        self.z = torch.zeros(Z_shape).to(self.device).float().normal_(0, 1)
+
         with torch.no_grad():
             x_features = self._generate_random_feature(X_train, random_models=random_models)
         self._update_beta(x_features, nonnegative_beta, random_models=random_models)

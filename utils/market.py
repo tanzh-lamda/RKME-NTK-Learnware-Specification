@@ -35,7 +35,7 @@ class DummyMarket:
             Clear current database if set to True, by default False
             !!! Do NOT set to True unless highly necessary !!!
         """
-        super().__init__(market_id=market_id)
+        self.market_id = market_id
         self.market_store_path = os.path.join(conf.market_root_path, self.market_id)
         self.learnware_pool_path = os.path.join(self.market_store_path, "learnware_pool")
         self.learnware_zip_pool_path = os.path.join(self.learnware_pool_path, "zips")
