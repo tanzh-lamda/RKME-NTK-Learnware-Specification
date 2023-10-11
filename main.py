@@ -11,7 +11,6 @@ from build_market import build_from_preprocessed, upload_to_easy_market
 from evaluate_market import evaluate_market_performance
 from preprocess.split_data import generate
 from preprocess.train_model import train_model
-from searcher import MultiProcessSearcher
 from utils import ntk_rkme
 from utils.clerk import get_custom_logger, Clerk
 
