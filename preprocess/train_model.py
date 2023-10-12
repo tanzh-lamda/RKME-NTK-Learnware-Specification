@@ -22,12 +22,13 @@ from preprocess.model import ConvModel
 from preprocess.dataloader import ImageDataLoader
 
 # Train Uploaders' models
-def uploader_train(train_X, train_y, val_X, val_y, out_classes, epochs=35, batch_size=128, device=None):
+def uploader_train(train_X, train_y, val_X, val_y, out_classes, epochs=35, batch_size=128, image_size=32, device=None):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     input_feature = train_X.shape[1]
-    model = ConvModel(channel=input_feature, n_random_features=out_classes).to(device)
+    model = ConvModel(channel=input_feature, im_size=(image_size, image_size),
+                      n_random_features=out_classes).to(device)
     model.train()
 
     # Adam optimizer with learning rate 1e-3
@@ -102,7 +103,7 @@ def train_model(args):
     for i, data in enumerate(dataloader):
         print("=" * 40)
         print('Train on uploader {:d}, with size'.format(i), data[0].shape, data[2].shape)
-        model = uploader_train(*data, out_classes=n_classes, device=device)
+        model = uploader_train(*data, out_classes=n_classes, image_size=args.image_size, device=device)
         model_save_path = os.path.join(model_save_root, 'uploader_{:d}.pth'.format(i))
         torch.save(model.state_dict(), model_save_path)
         print("Model saved to '{}'".format(model_save_path))

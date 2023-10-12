@@ -38,17 +38,17 @@ def best_match_performance(args, clerk: Clerk=None):
                              "{}_{:d}".format(args.data, args.data_id))
 
     best_match_by_user = cal_best_match(args, k=args.max_search_num)
+    dataloader = ImageDataLoader(data_root, args.n_users, train=False)
+    input_channel = dataloader[0][0].shape[1]
 
     models = []
     for model_file in (os.path.join(data_root, "models", "uploader_{:d}.pth".format(i))
                        for i in range(args.n_uploaders)):
-        model = ConvModel(channel=3, n_random_features=10)
+        model = ConvModel(channel=input_channel, n_random_features=10)
         model.load_state_dict(torch.load(model_file))
         model.to(device).eval()
 
         models.append(model)
-
-    dataloader = ImageDataLoader(data_root, args.n_users, train=False)
 
     acc = []
     for i, (test_X, test_y) in enumerate(dataloader):

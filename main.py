@@ -4,11 +4,11 @@ import logging
 import os
 
 from learnware.market import easy
-import torch.multiprocessing as mp
 
 from benchmark import best_match_performance
 from build_market import build_from_preprocessed, upload_to_easy_market
 from evaluate_market import evaluate_market_performance
+from graph.plot_spec import load_market, plot_comparison_diagram
 from preprocess.split_data import generate
 from preprocess.train_model import train_model
 from utils import ntk_rkme
@@ -42,6 +42,7 @@ parser.add_argument('-K', type=int, default=50,
 parser.add_argument('--resplit', default=False, action=argparse.BooleanOptionalAction,
                     help='Resplit datasets')
 parser.add_argument('--data', type=str, default='cifar10', help='dataset type')
+parser.add_argument('--image_size', type=int, default=32)
 parser.add_argument('--data_root', type=str, default=r"image_models",
                     help='The path of images and models')
 parser.add_argument('--n_uploaders', type=int, default=50, help='Number of uploaders')
@@ -78,7 +79,6 @@ CANDIDATES = {
 }
 
 def _regular_mode(clerk=None):
-    easy.logger.setLevel(logging.WARNING)
 
     if args.resplit:
         _re_split_mode()
@@ -119,11 +119,18 @@ def _auto_mode(search_key, clerk=None):
     _regular_mode(clerk=clerk)
     print(ntk_rkme.RKMEStatSpecification.INNER_PRODUCT_COUNT)
 
+def _plot_mode():
+    rbf_market, ntk_market = load_market(args)
+    plot_comparison_diagram(args, 40, rbf_market, ntk_market)
+
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_idx)
     # os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3,4"
+
     args.cuda_idx = 0
+
+    easy.logger.setLevel(logging.WARNING)
 
     performance_clerk = Clerk()
     if args.mode == "resplit":
@@ -132,6 +139,8 @@ if __name__ == "__main__":
         _regular_mode(clerk=performance_clerk)
     elif args.mode == "auto":
         _auto_mode(args.auto_param, clerk=performance_clerk)
+    elif args.mode == "plot":
+        _plot_mode()
     else:
         raise NotImplementedError()
 

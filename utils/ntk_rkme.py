@@ -53,8 +53,8 @@ class RKMEStatSpecification(BaseStatSpecification):
         setup_seed(0)
 
     @classmethod
-    def _generate_models(cls, kwargs, n_models, device, fixed_seed=None):
-        model_args = {'input_dim': 3,
+    def _generate_models(cls, kwargs, n_models, device, fixed_seed=None, input_dim=3):
+        model_args = {'input_dim': input_dim,
                       'n_random_features': kwargs["n_random_features"],
                       'mu': 0, 'sigma': kwargs["sigma"], 'k': 2,
                       'chopped_head': True,
@@ -104,14 +104,12 @@ class RKMEStatSpecification(BaseStatSpecification):
             self.beta = torch.from_numpy(self.beta).to(self.device)
             return
 
-        # Initialize Z by clustering, utiliing faiss to speed up the process.
-        # self._init_z_by_faiss(X, K)
         # Reshape to original dimensions
         X = X.reshape(X_shape)
         X_train = X
 
         random_models = list(self._generate_models(
-                self.kwargs, n_models=self.n_models, device=self.device))
+                self.kwargs, n_models=self.n_models, input_dim=X.shape[1], device=self.device))
         # self.z = self.z.reshape(Z_shape).to(self.device).float()
 
         self.z = torch.zeros(Z_shape).to(self.device).float().normal_(0, 1)
@@ -125,20 +123,12 @@ class RKMEStatSpecification(BaseStatSpecification):
         for i in range(steps):
             # Regenerate Random Models
             random_models = list(self._generate_models(
-                self.kwargs, n_models=self.n_models, device=self.device))
+                self.kwargs, n_models=self.n_models, input_dim=X.shape[1], device=self.device))
 
             with torch.no_grad():
                 x_features = self._generate_random_feature(X_train, random_models=random_models)
             self._update_z(x_features, optimizer, random_models=random_models)
             self._update_beta(x_features, nonnegative_beta, random_models=random_models)
-
-    def _init_z_by_faiss(self, X: Union[np.ndarray, torch.tensor], K: int):
-        X = X.astype("float32")
-        numDim = X.shape[1]
-        kmeans = faiss.Kmeans(numDim, K, niter=100, verbose=False)
-        kmeans.train(X)
-        center = torch.from_numpy(kmeans.centroids)
-        self.z = center
 
     @torch.no_grad()
     def _update_beta(self, x_features: Any, nonnegative_beta: bool = True, random_models=None):
@@ -197,7 +187,6 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return z_features.detach()
 
-
     def _generate_random_feature(self, data_X, batch_size=4096, random_models=None) -> torch.Tensor:
         # TODO: Remove this
         # assert random_models is not None
@@ -211,7 +200,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         for m, model in enumerate(random_models if random_models else
                                   self._generate_models(
-                self.kwargs, n_models=self.n_models, device=self.device)):
+                self.kwargs, n_models=self.n_models, input_dim=data_X.shape[1], device=self.device)):
             model.eval()
             curr_features_list = []
             for i, (X,) in enumerate(dataloader):
@@ -224,14 +213,8 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return X_features
 
-    def inner_prod(self, Phi2, kernel="ntk") -> float:
-        if kernel == "rbf":
-            raise NotImplementedError("not Support other kernel")
-            # return self._inner_prod_rbf(Phi2)
-        elif kernel == "ntk":
-            return self._inner_prod_ntk(Phi2)
-        else:
-            raise NotImplementedError("not Support other kernel")
+    def inner_prod(self, Phi2) -> float:
+        return self._inner_prod_ntk(Phi2)
 
     def _inner_prod_ntk(self, Phi2) -> float:
         if self.rkme_id is not None and Phi2.rkme_id is not None:
@@ -268,7 +251,8 @@ class RKMEStatSpecification(BaseStatSpecification):
 
         return float(term1 - 2 * term2 + term3)
 
-    def _calc_ntk_from_feature(self, x1_feature: torch.Tensor, x2_feature: torch.Tensor):
+    @staticmethod
+    def _calc_ntk_from_feature(x1_feature: torch.Tensor, x2_feature: torch.Tensor):
         K_12 = x1_feature @ x2_feature.T + 0.01
         return K_12
 

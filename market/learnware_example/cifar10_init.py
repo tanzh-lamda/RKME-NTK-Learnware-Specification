@@ -8,11 +8,11 @@ from preprocess.model import ConvModel
 
 
 class Model(BaseModel):
-    def __init__(self, device="cuda"):
-        super(Model, self).__init__(input_shape=(3, 32, 32), output_shape=(10,))
+    def __init__(self, device="cuda", input_channel=3):
+        super(Model, self).__init__(input_shape=(input_channel, 32, 32), output_shape=(10,))
         dir_path = os.path.dirname(os.path.abspath(__file__))
         self.device =device
-        self.model = ConvModel(channel=3, n_random_features=10)
+        self.model = ConvModel(channel=input_channel, n_random_features=10)
         self.model.load_state_dict(torch.load(os.path.join(dir_path, "model.pth")))
         self.model.to(device).eval()
 

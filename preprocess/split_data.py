@@ -106,9 +106,7 @@ def generate(args):
         test_X = data_downloader.transform_data(test_X, whitening_mat)
 
     elif dataset == 'fashion':
-        train_X, train_y, test_X, test_y = data_downloader.get_fashion_mnist(output_channels = 1, image_size = 32)
-        print(train_X.shape, test_X.shape, train_y.shape, test_y.shape)
-        print(train_y[:10])
+        train_X, train_y, test_X, test_y = data_downloader.get_fashion_mnist(output_channels = 1, image_size = args.image_size)
     else:
         raise NotImplementedError("No Support for", dataset)
 

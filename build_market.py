@@ -75,6 +75,7 @@ def build_from_preprocessed(args, regenerate=True):
             yaml_content = yaml.load(yaml_templet, Loader=yaml.FullLoader)
 
             yaml_content["model"]["kwargs"]["device"] = str(choose_device(args.cuda_idx))
+            yaml_content["model"]["kwargs"]["input_channel"] = train_X.shape[1]
             if args.spec == "ntk":
                 yaml_content["stat_specifications"][0]["kwargs"] = copy.deepcopy(args.__dict__)
 
@@ -97,10 +98,11 @@ def build_from_preprocessed(args, regenerate=True):
 
     return zip_path_list
 
-def upload_to_easy_market(args, zip_path_list):
+def upload_to_easy_market(args, zip_path_list, market_id=None):
     learnware.init()
     np.random.seed(2023)
-    market = DummyMarket(market_id="NTK-RF-{:d}".format(args.id), rebuild=True)
+    market_id = market_id if market_id else "NTK-RF-{:d}".format(args.id)
+    market = DummyMarket(market_id=market_id, rebuild=True)
 
     for idx, zip_path in enumerate(zip_path_list):
         semantic_spec = copy.deepcopy(user_semantic)

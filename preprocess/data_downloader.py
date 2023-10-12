@@ -73,7 +73,7 @@ def get_mnist(output_channels = 1, image_size = 28):
 
     return X_train, y_train, X_test, y_test
 
-def get_cifar10(output_channels = 1, image_size = 32):
+def get_cifar10(output_channels = 1, image_size = 32, z_score=True):
     ds_train = datasets.CIFAR10(DATA_ROOT, train = True, download = True, transform = transforms.Compose([transforms.ToTensor(), transforms.Resize([image_size, image_size])]))
     X_train = ds_train.data
     y_train = ds_train.targets
@@ -90,10 +90,10 @@ def get_cifar10(output_channels = 1, image_size = 32):
     if output_channels == 1:
         X_train = torch.mean(X_train, 1, keepdim = True)
         X_test = torch.mean(X_test, 1, keepdim = True)
-        
-        
-    X_test = (X_test - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
-    X_train = (X_train - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
+
+    if z_score:
+        X_test = (X_test - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
+        X_train = (X_train - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
     
     return X_train, y_train, X_test, y_test
 
@@ -158,6 +158,18 @@ def get_zca_matrix(X, reg_coef = 0.1):
       'ij,j,kj->ik', u, inv_sqrt_zca_eigs, u)
     
     return whitening_transform.cpu()
+
+
+def get_zca_matrix_inv(X, reg_coef=0.1):
+    X_flat = X.reshape(X.shape[0], -1)
+    cov = (X_flat.T @ X_flat) / X_flat.shape[0]
+    reg_amount = reg_coef * torch.trace(cov) / cov.shape[0]
+    u, s, _ = torch.svd(cov.cuda() + reg_amount * torch.eye(cov.shape[0]).cuda())
+
+    sqrt_zca_eigs = torch.diag(s) ** 0.5
+    inv_whitening_transform = (u @ sqrt_zca_eigs) @ u.T
+
+    return inv_whitening_transform.cpu()
 
 def layernorm_data(X):
     X_processed = (X - torch.mean(X, [1,2,3], keepdim = True))
