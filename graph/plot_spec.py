@@ -45,13 +45,13 @@ def inverse_to_image(args, images, X_train, inv_whitening_mat):
 
     return origin_images
 
-def rbf_most_similar(Z, X, device):
-    Z = torch.asarray(Z).double().reshape(Z.shape[0], -1).to(device)
-    X = torch.asarray(X).double().reshape(X.shape[0], -1).to(device)
-    # Equivalent to rbf
-    # similarity = torch.sum(Z**2, 1, keepdim=True) - 2 * Z @ X.T + torch.sum(X**2, 1, keepdim=True).T
-    similarity = torch_rbf_kernel(Z, X, gamma=0.1)
-    return torch.argmax(similarity, dim=1)
+def rbf_most_similar(Z, X):
+    Z = torch.asarray(Z).double().reshape(Z.shape[0], -1)
+    X = torch.asarray(X).double().reshape(X.shape[0], -1)
+    # L2-Norm
+    similarity = torch.sum(Z ** 2, 1, keepdim=True) - 2 * Z @ X.T + torch.sum(X ** 2, 1, keepdim=True).T
+    # similarity = torch_rbf_kernel(Z, X, gamma=0.1)
+    return torch.argmin(similarity, dim=1), torch.min(similarity, dim=1)
 
 def plot_comparison_diagram(args, uploader_id, rbf_market: DummyMarket, ntk_market: DummyMarket):
     rbf = list(rbf_market.learnware_list.values())[uploader_id].\
@@ -66,8 +66,6 @@ def plot_comparison_diagram(args, uploader_id, rbf_market: DummyMarket, ntk_mark
         X_train_transformed, reg_coef=0.1).numpy()
     X_train_transformed = data_downloader.transform_data(X_train_transformed, whitening_mat)
 
-    device = choose_device(args.cuda_idx)
-
     rbf_z, ntk_z = rbf.z.detach().cpu().numpy(), ntk.z.detach().cpu().numpy()
     rbf_top = list(sorted(zip(rbf_z, rbf.beta), key=lambda t: t[1], reverse=True))[:8]
     ntk_top = list(sorted(zip(ntk_z, ntk.beta), key=lambda t: t[1], reverse=True))[:8]
@@ -79,18 +77,27 @@ def plot_comparison_diagram(args, uploader_id, rbf_market: DummyMarket, ntk_mark
 
     for i, im in enumerate(rbf_images):
         axs[0][i].imshow(np.transpose(im, [1,2,0]))
-        axs[0][i].set_visible(False)
-        axs[0][i].set_visible(False)
+        axs[0][i].set_xticks([])
+        axs[0][i].set_yticks([])
+        axs[0][i].set_xlabel("β={:.3f}".format(rbf_top[i][1]))
+    axs[0][0].set_ylabel("RBF")
 
-    most_similar_idxes = rbf_most_similar(np.stack([z for z, beta in rbf_top]), X_train_transformed, device)
+    most_similar_idxes, distances = rbf_most_similar(np.stack([z for z, beta in rbf_top]), X_train_transformed)
     for i, idx in enumerate(most_similar_idxes):
-        axs[1][i].imshow(np.transpose(X_train[idx] / 255, [1,2,0]))
-        axs[1][i].set_visible(False)
-        axs[1][i].set_visible(False)
+        axs[1][i].imshow(np.transpose(X_train[idx].cpu().numpy() / 255, [1,2,0]))
+        axs[1][i].set_xticks([])
+        axs[1][i].set_yticks([])
+        axs[1][i].set_xlabel("{:.4e}".format(
+            np.sum((min_max_norm(X_train[idx].cpu().numpy())-rbf_images[i]) ** 2) ** 0.5
+        ))
+    axs[1][0].set_ylabel("Original")
 
     for i, im in enumerate(ntk_images):
         axs[2][i].imshow(np.transpose(im, [1,2,0]))
-        axs[2][i].set_visible(False)
-        axs[2][i].set_visible(False)
+        axs[2][i].set_xticks([])
+        axs[2][i].set_yticks([])
+        axs[2][i].set_xlabel("β={:.3f}".format(ntk_top[i][1]))
+    axs[2][0].set_ylabel("NTK")
 
+    plt.savefig("comparison_diagram.png", dpi=600)
     plt.show()

@@ -75,7 +75,7 @@ class RKMEStatSpecification(BaseStatSpecification):
         X: np.ndarray,
         K: int = 100,
         step_size: float = 0.01,
-        steps: int=3,
+        steps: int=None,
         early_stopping=False,
         nonnegative_beta: bool = True,
         reduce: bool = True,
@@ -120,6 +120,8 @@ class RKMEStatSpecification(BaseStatSpecification):
         optimizer = torch_optimizer.AdaBelief([{"params": [self.z]}],
                                               lr=step_size, eps=1e-16)
 
+        # TODO: Check this heuristic way
+        # steps = int((40 + X_train.shape[0] / 50) * self.kwargs["ntk_factor"])
         for i in range(steps):
             # Regenerate Random Models
             random_models = list(self._generate_models(

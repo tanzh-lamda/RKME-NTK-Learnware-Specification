@@ -63,14 +63,17 @@ parser.add_argument('--net_depth', type=int, default=3,
 parser.add_argument('--activation', type=str,
                     default='relu', help='activation of random model')
 parser.add_argument('--ntk_steps', type=int,
-                    default=80, help='steps of optimization')
+                    default=100, help='steps of optimization')
+parser.add_argument('--ntk_factor', type=float, # TODO: Why this is not working ?
+                    default=1, help='factor of steps of optimization')
 parser.add_argument('--sigma', type=float, default=None, help='standard variance of random models')
 
 args = parser.parse_args()
 
 CANDIDATES = {
     "model": ['conv', 'resnet'],
-    "ntk_steps": [10, 20, 40, 50, 60, 75, 85, 100],
+    "ntk_steps": [70, 80, 90, 100, 110, 120, 130],
+    # "ntk_factor": [0.8, 0.9, 1.0, 1.05, 1.1, 1.2, 1.3, 1.4],
     "sigma": [0.003, 0.004, 0.005, 0.006, 0.01, 0.025, 0.05, 0.1],
     "n_random_features": [32, 64, 96, 128, 196, 256],
     "net_width": [32, 64, 96, 128, 160, 196],
@@ -121,7 +124,7 @@ def _auto_mode(search_key, clerk=None):
 
 def _plot_mode():
     rbf_market, ntk_market = load_market(args)
-    plot_comparison_diagram(args, 40, rbf_market, ntk_market)
+    plot_comparison_diagram(args, 25, rbf_market, ntk_market)
 
 
 if __name__ == "__main__":
