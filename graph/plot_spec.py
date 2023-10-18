@@ -27,9 +27,6 @@ def min_max_norm(X):
     return (X - lower) / (upper - lower)
 
 def inverse_to_image(args, images, X_train, inv_whitening_mat):
-    if args.data != "cifar10":
-        raise NotImplementedError()
-
     mean, std = torch.mean(X_train, [0, 2, 3], keepdim=True).squeeze(dim=0).cpu().numpy(),\
         torch.std(X_train, [0, 2, 3], keepdim=True).squeeze(dim=0).cpu().numpy()
 
@@ -58,13 +55,20 @@ def plot_comparison_diagram(args, uploader_id, rbf_market: DummyMarket, ntk_mark
         specification.stat_spec["RKMEStatSpecification"]
     ntk = list(ntk_market.learnware_list.values())[uploader_id].\
         specification.stat_spec["RKMEStatSpecification"]
-    X_train, _, _, _ = data_downloader.get_cifar10(output_channels=3, z_score=False)
-    X_train_transformed, _, _, _ = data_downloader.get_cifar10(output_channels=3, z_score=True)
-    inv_whitening_mat = data_downloader.get_zca_matrix_inv(
-        X_train_transformed, reg_coef=0.1).numpy()
-    whitening_mat = data_downloader.get_zca_matrix(
-        X_train_transformed, reg_coef=0.1).numpy()
-    X_train_transformed = data_downloader.transform_data(X_train_transformed, whitening_mat)
+    if args.data == "cifar10":
+        X_train, _, _, _ = data_downloader.get_cifar10(output_channels=3, z_score=False)
+        X_train_transformed, _, _, _ = data_downloader.get_cifar10(output_channels=3, z_score=True)
+        inv_whitening_mat = data_downloader.get_zca_matrix_inv(
+            X_train_transformed, reg_coef=0.1).numpy()
+        whitening_mat = data_downloader.get_zca_matrix(
+            X_train_transformed, reg_coef=0.1).numpy()
+        X_train_transformed = data_downloader.transform_data(X_train_transformed, whitening_mat)
+    elif args.data == "fashion":
+        X_train, _, _, _ = data_downloader.get_fashion_mnist(
+            output_channels = 1, image_size = args.image_size, z_score=False)
+        X_train_transformed, _, _, _ = data_downloader.get_cifar10(
+            output_channels = 1, image_size = args.image_size, z_score=True)
+        inv_whitening_mat = np.identity(X_train.shape[1] * X_train.shape[2] * X_train.shape[3])
 
     rbf_z, ntk_z = rbf.z.detach().cpu().numpy(), ntk.z.detach().cpu().numpy()
     rbf_top = list(sorted(zip(rbf_z, rbf.beta), key=lambda t: t[1], reverse=True))[:8]
@@ -76,15 +80,28 @@ def plot_comparison_diagram(args, uploader_id, rbf_market: DummyMarket, ntk_mark
     fig, axs = plt.subplots(3, 8, figsize=(12, 6))
 
     for i, im in enumerate(rbf_images):
-        axs[0][i].imshow(np.transpose(im, [1,2,0]))
+        if im.shape[0] == 3:
+            axs[0][i].imshow(np.transpose(im, [1,2,0]))
+        else:
+            axs[0][i].imshow(np.transpose(im, [1,2,0]), cmap = 'gray')
         axs[0][i].set_xticks([])
         axs[0][i].set_yticks([])
         axs[0][i].set_xlabel("β={:.3f}".format(rbf_top[i][1]))
     axs[0][0].set_ylabel("RBF")
 
-    most_similar_idxes, distances = rbf_most_similar(np.stack([z for z, beta in rbf_top]), X_train_transformed)
+    if args.data == "cifar10":
+        most_similar_idxes, distances = rbf_most_similar(np.stack([z for z, beta in rbf_top]), X_train_transformed)
+    else: # fashion
+        flat = X_train.reshape(X_train.shape[0], -1)
+        most_similar_idxes, distances = rbf_most_similar(
+            np.stack(rbf_images), (flat - torch.min(flat, dim=1, keepdim=True).values) /
+                                  (torch.max(flat, dim=1, keepdim=True).values - torch.min(flat, dim=1, keepdim=True).values))
+
     for i, idx in enumerate(most_similar_idxes):
-        axs[1][i].imshow(np.transpose(X_train[idx].cpu().numpy() / 255, [1,2,0]))
+        if X_train[idx].shape[0] == 3:
+            axs[1][i].imshow(np.transpose(X_train[idx].cpu().numpy() / 255, [1,2,0]))
+        else:
+            axs[1][i].imshow(np.transpose(X_train[idx].cpu().numpy() / 255, [1, 2, 0]), cmap='gray')
         axs[1][i].set_xticks([])
         axs[1][i].set_yticks([])
         axs[1][i].set_xlabel("{:.4e}".format(
@@ -93,7 +110,10 @@ def plot_comparison_diagram(args, uploader_id, rbf_market: DummyMarket, ntk_mark
     axs[1][0].set_ylabel("Original")
 
     for i, im in enumerate(ntk_images):
-        axs[2][i].imshow(np.transpose(im, [1,2,0]))
+        if im.shape[0] == 3:
+            axs[2][i].imshow(np.transpose(im, [1,2,0]))
+        else:
+            axs[2][i].imshow(np.transpose(im, [1, 2, 0]), cmap="gray")
         axs[2][i].set_xticks([])
         axs[2][i].set_yticks([])
         axs[2][i].set_xlabel("β={:.3f}".format(ntk_top[i][1]))

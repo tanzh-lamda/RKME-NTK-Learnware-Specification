@@ -124,7 +124,7 @@ def _auto_mode(search_key, clerk=None):
 
 def _plot_mode():
     rbf_market, ntk_market = load_market(args)
-    plot_comparison_diagram(args, 25, rbf_market, ntk_market)
+    plot_comparison_diagram(args, 10, rbf_market, ntk_market)
 
 
 if __name__ == "__main__":

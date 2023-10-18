@@ -6,7 +6,7 @@ from scipy.ndimage.interpolation import rotate as scipyrotate
 import numpy as np
 
 DATA_ROOT = r'image_models/data'
-def get_fashion_mnist(output_channels = 1, image_size = 28):
+def get_fashion_mnist(output_channels = 1, image_size = 28, z_score=True):
     print(image_size)
     ds_train = datasets.FashionMNIST(DATA_ROOT, train = True, download = True, transform = transforms.Compose([transforms.Resize((image_size, image_size)), transforms.ToTensor()]))
     ds_test = datasets.FashionMNIST(DATA_ROOT, train = False, download = True, transform = transforms.Compose([transforms.Resize((image_size, image_size)), transforms.ToTensor()]))
@@ -37,9 +37,10 @@ def get_fashion_mnist(output_channels = 1, image_size = 28):
     if(output_channels > 1):
         X_train = torch.cat([X_train for i in range(output_channels)], 1)
         X_test = torch.cat([X_test for i in range(output_channels)], 1)
-        
-    X_test = (X_test - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
-    X_train = (X_train - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
+
+    if z_score:
+        X_test = (X_test - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
+        X_train = (X_train - torch.mean(X_train, [0,2,3], keepdim = True))/(torch.std(X_train, [0,2,3], keepdim = True))
 
     return X_train, y_train, X_test, y_test
 
