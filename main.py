@@ -2,6 +2,7 @@ import argparse
 import copy
 import logging
 import os
+from functools import partial
 
 from learnware.market import easy
 
@@ -41,6 +42,8 @@ parser.add_argument('-K', type=int, default=50,
 # data
 parser.add_argument('--resplit', default=False, action=argparse.BooleanOptionalAction,
                     help='Resplit datasets')
+parser.add_argument('--regenerate', type=bool, default=True, help='whether to regenerate specs and learnwares')
+
 parser.add_argument('--data', type=str, default='cifar10', help='dataset type')
 parser.add_argument('--image_size', type=int, default=32)
 parser.add_argument('--data_root', type=str, default=r"image_models",
@@ -85,9 +88,9 @@ def _regular_mode(clerk=None):
 
     if args.resplit:
         _re_split_mode()
-    learnware_list = build_from_preprocessed(args, regenerate=True)
+    learnware_list = build_from_preprocessed(args, regenerate=args.regenerate)
     market = upload_to_easy_market(args, learnware_list)
-    evaluate_market_performance(args, market, clerk=clerk)
+    evaluate_market_performance(args, market, clerk=clerk, regenerate=args.regenerate)
 
     best_match_performance(args, clerk=clerk)
     logger = get_custom_logger()
@@ -122,30 +125,45 @@ def _auto_mode(search_key, clerk=None):
     _regular_mode(clerk=clerk)
     print(ntk_rkme.RKMEStatSpecification.INNER_PRODUCT_COUNT)
 
-def _plot_mode():
+def _plot_spec_mode():
+    rbf_market, ntk_market = load_market(args)
+    plot_comparison_diagram(args, 10, rbf_market, ntk_market)
+
+def _plot_accuracy_mode():
     rbf_market, ntk_market = load_market(args)
     plot_comparison_diagram(args, 10, rbf_market, ntk_market)
 
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_idx)
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3,4"
-
     args.cuda_idx = 0
-
     easy.logger.setLevel(logging.WARNING)
 
     performance_clerk = Clerk()
-    if args.mode == "resplit":
-        _re_split_mode()
-    elif args.mode == "regular":
-        _regular_mode(clerk=performance_clerk)
-    elif args.mode == "auto":
-        _auto_mode(args.auto_param, clerk=performance_clerk)
-    elif args.mode == "plot":
-        _plot_mode()
-    else:
+    behaviour_by_mode = {
+        "resplit": _re_split_mode,
+        "regular": partial(_regular_mode, clerk=performance_clerk),
+        "auto": partial(_auto_mode, args.auto_param, clerk=performance_clerk),
+        "plot_spec": _plot_spec_mode,
+        "plot_accuracy": _plot_accuracy_mode
+    }
+
+    if args.mode not in behaviour_by_mode:
         raise NotImplementedError()
+    behaviour_by_mode[args.mode]()
+
+    # if args.mode == "resplit":
+    #     _re_split_mode()
+    # elif args.mode == "regular":
+    #     _regular_mode(clerk=performance_clerk)
+    # elif args.mode == "auto":
+    #     _auto_mode(args.auto_param, clerk=performance_clerk)
+    # elif args.mode == "plot_spec":
+    #     _plot_spec_mode()
+    # elif args.mode == "plot_accuracy":
+    #     _plot_accuracy_mode()
+    # else:
+    #     raise NotImplementedError()
 
     print(performance_clerk)
 
