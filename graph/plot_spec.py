@@ -119,5 +119,6 @@ def plot_comparison_diagram(args, uploader_id, rbf_market: DummyMarket, ntk_mark
         axs[2][i].set_xlabel("β={:.3f}".format(ntk_top[i][1]))
     axs[2][0].set_ylabel("NTK")
 
+    plt.tight_layout(pad=2.0)
     plt.savefig("comparison_diagram.png", dpi=600)
     plt.show()

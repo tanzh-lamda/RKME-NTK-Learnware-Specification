@@ -4,11 +4,13 @@ import logging
 import os
 from functools import partial
 
+from matplotlib import rcParams
 from learnware.market import easy
 
 from benchmark import best_match_performance
 from build_market import build_from_preprocessed, upload_to_easy_market
 from evaluate_market import evaluate_market_performance
+from graph.plot_accuracy import plot_accuracy_diagram, load_users
 from graph.plot_spec import load_market, plot_comparison_diagram
 from preprocess.split_data import generate
 from preprocess.train_model import train_model
@@ -50,7 +52,7 @@ parser.add_argument('--data_root', type=str, default=r"image_models",
                     help='The path of images and models')
 parser.add_argument('--n_uploaders', type=int, default=50, help='Number of uploaders')
 parser.add_argument('--n_users', type=int, default=50, help='Number of users')
-parser.add_argument('--data_id', type=int, default=6, help='market data id')
+parser.add_argument('--data_id', type=int, default=0, help='market data id')
 
 #ntk
 parser.add_argument('--model', type=str,
@@ -130,8 +132,12 @@ def _plot_spec_mode():
     plot_comparison_diagram(args, 10, rbf_market, ntk_market)
 
 def _plot_accuracy_mode():
+    rcParams['font.family'] = 'serif'
+    rcParams['font.serif'] = 'SimHei'
+
     rbf_market, ntk_market = load_market(args)
-    plot_comparison_diagram(args, 10, rbf_market, ntk_market)
+    rbf_specs, ntk_specs = load_users(args)
+    plot_accuracy_diagram(args, rbf_market, ntk_market, rbf_specs, ntk_specs)
 
 
 if __name__ == "__main__":
@@ -151,19 +157,6 @@ if __name__ == "__main__":
     if args.mode not in behaviour_by_mode:
         raise NotImplementedError()
     behaviour_by_mode[args.mode]()
-
-    # if args.mode == "resplit":
-    #     _re_split_mode()
-    # elif args.mode == "regular":
-    #     _regular_mode(clerk=performance_clerk)
-    # elif args.mode == "auto":
-    #     _auto_mode(args.auto_param, clerk=performance_clerk)
-    # elif args.mode == "plot_spec":
-    #     _plot_spec_mode()
-    # elif args.mode == "plot_accuracy":
-    #     _plot_accuracy_mode()
-    # else:
-    #     raise NotImplementedError()
 
     print(performance_clerk)
 

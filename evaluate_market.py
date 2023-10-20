@@ -8,8 +8,8 @@ from tqdm import tqdm
 
 from build_market import user_semantic
 from preprocess.dataloader import ImageDataLoader
+from utils import ntk_rkme
 from utils.clerk import Clerk, get_custom_logger
-from utils.ntk_rkme import RKMEStatSpecification
 from utils.reuse import AveragingReuser
 
 
@@ -25,15 +25,25 @@ def evaluate_market_performance(args, market, clerk: Clerk=None, regenerate=True
         dir_path = os.path.join(market_root, args.data, "{}_{:d}".format(args.spec, args.id), "user_{:d}".format(i))
         os.makedirs(dir_path, exist_ok=True)
 
-        if args.spec == "rbf":
-            stat_spec = specification.utils.generate_rkme_spec(X=test_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
-        elif args.spec == "ntk":
-            stat_spec = RKMEStatSpecification(rkme_id=i+args.n_uploaders, **args.__dict__)
-            stat_spec.generate_stat_spec_from_data(test_X, reduce=True, steps=args.ntk_steps, K=args.K)
+        if regenerate:
+            if args.spec == "rbf":
+                stat_spec = specification.utils.generate_rkme_spec(X=test_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=args.cuda_idx)
+            elif args.spec == "ntk":
+                stat_spec = ntk_rkme.RKMEStatSpecification(rkme_id=i+args.n_uploaders, **args.__dict__)
+                stat_spec.generate_stat_spec_from_data(test_X, reduce=True, steps=args.ntk_steps, K=args.K)
+            else:
+                raise NotImplementedError()
+            # Save User's spec to disk
+            stat_spec.save(os.path.join(dir_path, "spec.json"))
         else:
-            raise NotImplementedError()
-        # Save User's spec to disk
-        stat_spec.save(os.path.join(dir_path, "spec.json"))
+            if args.spec == "rbf":
+                stat_spec = specification.RKMEStatSpecification(gamma=0.1, cuda_idx=args.cuda_idx)
+            elif args.spec == "ntk":
+                stat_spec = ntk_rkme.RKMEStatSpecification(rkme_id=i+args.n_uploaders, **args.__dict__)
+            else:
+                raise NotImplementedError()
+            # Load User's spec from disk
+            stat_spec.load(os.path.join(dir_path, "spec.json"))
 
         user_info = BaseUserInfo(semantic_spec=user_semantic, stat_info={"RKMEStatSpecification": stat_spec})
 
@@ -54,6 +64,7 @@ def evaluate_market_performance(args, market, clerk: Clerk=None, regenerate=True
     return {
         "Accuracy": {
             "Mean": np.mean(acc),
-            "Std": np.std(acc)
+            "Std": np.std(acc),
+            "All": acc
         }
     }

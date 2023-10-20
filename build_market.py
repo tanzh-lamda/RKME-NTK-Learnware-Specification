@@ -52,7 +52,7 @@ def build_from_preprocessed(args, regenerate=True):
 
         # Make Specification
         if args.spec == "rbf":
-            spec = specification.utils.generate_rkme_spec(X=train_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=0)
+            spec = specification.utils.generate_rkme_spec(X=train_X, reduced_set_size=args.K, gamma=0.1, cuda_idx=args.cuda_idx)
         elif args.spec == "ntk":
             spec = RKMEStatSpecification(rkme_id=i, **args.__dict__)
             spec.generate_stat_spec_from_data(val_X, K=args.K, steps=args.ntk_steps, reduce=True)
