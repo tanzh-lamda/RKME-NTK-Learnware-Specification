@@ -7,11 +7,11 @@ from functools import partial
 from matplotlib import rcParams
 from learnware.market import easy
 
-from benchmark import best_match_performance
+from benchmark import best_match_performance, average_performance_totally
 from build_market import build_from_preprocessed, upload_to_easy_market
 from evaluate_market import evaluate_market_performance
-from graph.plot_accuracy import plot_accuracy_diagram, load_users
-from graph.plot_spec import load_market, plot_comparison_diagram
+from diagram.plot_accuracy import plot_accuracy_diagram, load_users
+from diagram.plot_spec import load_market, plot_comparison_diagram
 from preprocess.split_data import generate
 from preprocess.train_model import train_model
 from utils import ntk_rkme
@@ -139,6 +139,8 @@ def _plot_accuracy_mode():
     rbf_specs, ntk_specs = load_users(args)
     plot_accuracy_diagram(args, rbf_market, ntk_market, rbf_specs, ntk_specs)
 
+def _average_performance():
+    average_performance_totally(args, list(range(8)), list(range(8)))
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_idx)
@@ -151,7 +153,8 @@ if __name__ == "__main__":
         "regular": partial(_regular_mode, clerk=performance_clerk),
         "auto": partial(_auto_mode, args.auto_param, clerk=performance_clerk),
         "plot_spec": _plot_spec_mode,
-        "plot_accuracy": _plot_accuracy_mode
+        "plot_accuracy": _plot_accuracy_mode,
+        "average_performance": _average_performance,
     }
 
     if args.mode not in behaviour_by_mode:

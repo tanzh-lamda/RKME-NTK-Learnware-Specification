@@ -1,10 +1,14 @@
+import copy
 import json
 import os
+from typing import List
 
 import numpy as np
 import torch
 from learnware.specification.rkme import choose_device
 
+from diagram.plot_accuracy import _evaluate_performance_by_user
+from diagram.plot_spec import load_market
 from preprocess.dataloader import ImageDataLoader
 from preprocess.model import ConvModel
 from utils.clerk import Clerk
@@ -68,3 +72,20 @@ def best_match_performance(args, clerk: Clerk=None):
 
     if clerk is None:
         print("Accuracy: {:.2f} ({:.2f})".format(np.mean(acc), np.std(acc)))
+
+def average_performance_totally(args, ids: List[int], data_ids: List[int]):
+    accuracies = []
+    for id, data_id in zip(ids, data_ids):
+        args_ = copy.deepcopy(args)
+        args_.data_id = data_id
+        args_.id = id
+
+        rbf_market, ntk_market = load_market(args)
+        acc = _evaluate_performance_by_user(args, rbf_market)
+        acc = np.asarray(acc)
+
+        accuracies.append(acc)
+
+    accuracy_totally = np.stack(accuracies)
+    print("Average Case: {:.5f} {:.5f}".format(np.mean(accuracy_totally), np.std(accuracy_totally)))
+    print("{:.5f}".format(np.std(np.mean(accuracy_totally, axis=(1,2)))))
