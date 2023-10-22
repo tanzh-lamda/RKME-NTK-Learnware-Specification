@@ -18,6 +18,6 @@ fi
 for ((i=0;i<num;i++))
 do
 # shellcheck disable=SC2086
-nohup python main.py --id ${i} --cuda_idx ${i} ${param} > "./log/${folder}/auto_${i}.log" 2>&1 &
+nohup python -u main.py --id ${i} --cuda_idx ${i} ${param} > "./log/${folder}/auto_${i}.log" 2>&1 &
 echo $! >> "./log/${folder}/.save_pid"
 done

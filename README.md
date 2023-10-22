@@ -58,6 +58,11 @@ fi
 --mode auto --n_uploaders 50 --n_users 50 -K 48 --auto_param data_id --spec ntk --data cifar10
 ```
 
+## 注意事项
+
+请将数据集文件cifar-10-python.tar.gz提前拷入image_models/data文件夹中。多进程同时自动下载数据可能导致意想不到的错误。
+
+
 ## 项目结构
 
 preprocess中用于加载数据，划分数据集，为上传者训练模型。
