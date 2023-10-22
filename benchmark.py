@@ -88,4 +88,5 @@ def average_performance_totally(args, ids: List[int], data_ids: List[int]):
 
     accuracy_totally = np.stack(accuracies)
     print("Average Case: {:.5f} {:.5f}".format(np.mean(accuracy_totally), np.std(accuracy_totally)))
-    print("{:.5f}".format(np.std(np.mean(accuracy_totally, axis=(1,2)))))
+    print(" ".join(["{:.5f}".format(v) for v in np.mean(accuracy_totally, axis=(1,2))]))
+    print(np.std(np.mean(accuracy_totally, axis=(1,2))))

@@ -111,7 +111,7 @@ def _re_split_mode():
 def _auto_mode(search_key, clerk=None):
     logger = get_custom_logger()
 
-    available_cuda_idx = [1, 2, 3, 4, 5, 6, 7, 0]
+    available_cuda_idx = [0, 1, 2, 3, 4, 5, 6, 7]
 
     if search_key is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(available_cuda_idx[args.id % len(available_cuda_idx)])
