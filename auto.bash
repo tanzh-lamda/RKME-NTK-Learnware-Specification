@@ -4,7 +4,7 @@
 source ~/anaconda3/etc/profile.d/conda.sh
 conda activate nt
 
-param='--mode auto --n_uploaders 50 --n_users 50 -K 48 --auto_param data_id --spec rbf --data cifar10'
+param='--mode resplit --n_uploaders 50 --n_users 50 -K 48 --data cifar10'
 folder="$(date +%s)"
 mkdir -p "./log/${folder}"
 echo "The output is redirected to log/${folder} with token ${folder}"

@@ -4,8 +4,10 @@ import logging
 import os
 from functools import partial
 
+import numpy as np
 from matplotlib import rcParams
 from learnware.market import easy
+from tqdm import tqdm
 
 from benchmark import best_match_performance, average_performance_totally
 from build_market import build_from_preprocessed, upload_to_easy_market
@@ -139,8 +141,25 @@ def _plot_accuracy_mode():
     rbf_specs, ntk_specs = load_users(args)
     plot_accuracy_diagram(args, rbf_market, ntk_market, rbf_specs, ntk_specs)
 
-def _average_performance():
+def _average_performance_mode():
     average_performance_totally(args, list(range(8)), list(range(8)))
+
+def _oracle_performance_mode(num=8):
+    accuracies = []
+    for id_, data_id in tqdm(zip(range(num), range(num)), total=num):
+        args_ = copy.deepcopy(args)
+        args_.data_id = data_id
+        args_.id = id_
+
+        clerk = Clerk()
+        best_match_performance(args_, clerk)
+        accuracies.append(np.mean(clerk.best))
+
+    accuracies = np.asarray(accuracies)
+
+    print("Oracle Case({:d}): {:.5f} {:.5f}".format(args.max_search_num,
+                                                    np.mean(accuracies), np.std(accuracies)))
+    print(" ".join(["{:.5f}".format(v) for v in accuracies]))
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_idx)
@@ -154,7 +173,8 @@ if __name__ == "__main__":
         "auto": partial(_auto_mode, args.auto_param, clerk=performance_clerk),
         "plot_spec": _plot_spec_mode,
         "plot_accuracy": _plot_accuracy_mode,
-        "average_performance": _average_performance,
+        "average_performance": _average_performance_mode,
+        "oracle_performance": _oracle_performance_mode
     }
 
     if args.mode not in behaviour_by_mode:
