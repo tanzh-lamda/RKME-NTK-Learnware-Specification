@@ -100,3 +100,7 @@ build_market.py和evaluate_market.py是实验的主要工作流。
 benchmark.py中提供了理论上单个学习器的最优性能评测，也即论文中的ORACLE情景。
 
 diagram中提供了实验的绘图部分实现。
+
+## 致谢
+
+该实验的部分实验设定参考了仓库[RFAD](https://github.com/yolky/RFAD)以及他们的工作。
