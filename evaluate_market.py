@@ -59,7 +59,7 @@ def evaluate_market_performance(args, market, clerk: Clerk=None, regenerate=True
 
         logger.debug("Accuracy for user {:d}: {:.3f}; {:.3f} on average up to now.".format(i, curr_acc, np.mean(acc)))
 
-    logger.info("Accuracy {:.3f}({:.3f})".format(np.mean(acc), np.std(acc)))
+    logger.info("Accuracy {:.5f}({:.5f})".format(np.mean(acc), np.std(acc)))
 
     return {
         "Accuracy": {
