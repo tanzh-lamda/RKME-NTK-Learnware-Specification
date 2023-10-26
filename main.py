@@ -4,6 +4,7 @@ import logging
 import os
 from functools import partial
 
+import jax
 import numpy as np
 from matplotlib import rcParams
 from learnware.market import easy
@@ -46,7 +47,8 @@ parser.add_argument('-K', type=int, default=50,
 # data
 parser.add_argument('--resplit', default=False, action=argparse.BooleanOptionalAction,
                     help='Resplit datasets')
-parser.add_argument('--regenerate', type=bool, default=True, help='whether to regenerate specs and learnwares')
+parser.add_argument('--regenerate', default=True, action=argparse.BooleanOptionalAction,
+                    help='whether to regenerate specs and learnwares')
 
 parser.add_argument('--data', type=str, default='cifar10', help='dataset type')
 parser.add_argument('--image_size', type=int, default=32)
@@ -96,6 +98,7 @@ def _regular_mode(clerk=None):
     market = upload_to_easy_market(args, learnware_list)
     evaluate_market_performance(args, market, clerk=clerk, regenerate=args.regenerate)
 
+    jax.clear_backends()
     best_match_performance(args, clerk=clerk)
     logger = get_custom_logger()
 
