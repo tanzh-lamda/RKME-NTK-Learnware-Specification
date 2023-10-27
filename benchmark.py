@@ -60,7 +60,7 @@ def best_match_performance(args, clerk: Clerk=None):
             torch.asarray(test_y, device=device)
 
         predict_y = torch.argmax(torch.sum(torch.stack(
-            [models[m](test_X) for m in best_match_by_user[i]],
+            [torch.softmax(models[m](test_X), dim=-1) for m in best_match_by_user[i]],
             dim=-1), dim=-1), dim=-1)
 
         curr_acc = np.mean((predict_y == test_y).cpu().detach().numpy())
