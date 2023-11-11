@@ -6,11 +6,11 @@
 
 ### Step 1. 配置启动脚本
 
-将auto.bash中的**nt**修改为运行设备的conda环境名。
+将auto.bash中的**env**修改为运行设备的conda环境名。
 
 ```bash
 source ~/anaconda3/etc/profile.d/conda.sh
-conda activate nt
+conda activate env
 ```
 
 将auto.bash中的**num**修改为运行设备支持的最大cuda核心数，或者在启动auto.bash时键入参数。
@@ -65,29 +65,27 @@ fi
 打开log/{token}下任意*.log文件，查看文件最底部输出。
 
 spec给出了本次实验基于的核函数类型，n_uploaders与n_users给出了学件数与目标任务数。
-RKME Accuracy就是本次实验的准确率51.43%，Best Accuracy则对应了论文中的Oracle情景。
-
+RKME Accuracy就是本次实验的准确率58.38%，Best Accuracy则对应了论文中的Oracle情景。
 
 ```log
-2023-10-23 04:18:35,476 | INFO | =============================================
+2023-10-27 22:40:45,921 | INFO | =============================================
 ...
-2023-10-23 04:18:35,477 | INFO | spec      :ntk
+2023-10-27 22:40:45,922 | INFO | spec      :ntk
 ...
-2023-10-23 04:18:35,477 | INFO | n_uploaders:50
-2023-10-23 04:18:35,477 | INFO | n_users   :50
+2023-10-27 22:40:45,922 | INFO | n_uploaders:50
+2023-10-27 22:40:45,922 | INFO | n_users   :50
 ...
-2023-10-23 04:18:35,477 | INFO | =============================================
+2023-10-27 22:40:45,923 | INFO | =============================================
 2600
-Best Accuracy 0.57645(0.109)
-RKME Accuracy 0.51425(0.122)
-Pearson 0.39212
+Best Accuracy 0.63007(0.074)
+RKME Accuracy 0.58378(0.122)
+Pearson 0.44132
 ```
 
 
 ## 注意事项
 
 请将数据集文件**cifar-10-python.tar.gz**提前拷入image_models/data文件夹中。多进程同时自动下载数据可能导致意想不到的错误。
-
 
 ## 项目结构
 

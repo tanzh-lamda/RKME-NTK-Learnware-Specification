@@ -82,7 +82,7 @@ def plot_accuracy_diagram(args, rbf_market: DummyMarket, ntk_market: DummyMarket
 
     plt.yticks(np.asarray([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
                ["0%", "20%", "40%", "60%", "80%", "100%"])
-    plt.xlabel("用户编号")
+    plt.xlabel("目标任务")
     plt.ylabel("投票复用准确率")
     plt.ylim(0.0, 1.0)
     x_user = range(1, args.n_users + 1)
