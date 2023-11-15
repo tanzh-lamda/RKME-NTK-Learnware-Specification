@@ -1,4 +1,4 @@
-# RKME-NTK Experiments
+# RKME-NTK Learnware Specification Experiments
 
 ## 实验复现指南
 
